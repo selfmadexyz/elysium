@@ -1,4 +1,4 @@
-import type { PostResponse } from '@backend/modules/posts/model';
+import type { PostResponse } from '@elysium/contracts/posts';
 import { CreatePostDialog, DeletePostAlert, EditPostDialog, PostsTable } from '@frontend/components/posts';
 import { Button } from '@frontend/components/ui/button';
 import { usePosts } from '@frontend/hooks/use-posts';

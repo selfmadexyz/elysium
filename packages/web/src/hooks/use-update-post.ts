@@ -1,4 +1,4 @@
-import type { UpdatePostRequest } from '@backend/modules/posts/model';
+import type { UpdatePostRequest } from '@elysium/contracts/posts';
 import { client } from '@frontend/lib/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

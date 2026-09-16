@@ -44,6 +44,12 @@ The `/api/$` TanStack Start server route imports the Elysia app and passes it th
 - durable application and authentication data;
 - constraints and transactional consistency.
 
+### Contracts own
+
+- explicit request and response schemas shared across runtime boundaries;
+- public DTO types consumed by Elysia and the web application;
+- transport validation rules that must not depend on database internals.
+
 ## Request flows
 
 ### Public page
@@ -102,14 +108,14 @@ The integrated route remains the default code path. A split deployment needs exp
 ## Type flow
 
 ```text
-Drizzle schema
-   └── drizzle-typebox models
-          └── Elysia runtime contract
-                 └── Eden Treaty client
-                        └── TanStack Query hooks and React
+@elysium/contracts TypeBox schemas
+   └── Elysia runtime contract
+          ├── Eden Treaty client
+          └── shared DTO types
+                 └── TanStack Query hooks and React
 ```
 
-Type sharing catches integration mistakes during development. Elysia validation protects the runtime boundary. Authorization remains explicit service behavior.
+The database schema remains an internal persistence detail. Type sharing catches integration mistakes during development. Elysia validation protects the runtime boundary. Authorization remains explicit service behavior.
 
 ## Non-goals
 
