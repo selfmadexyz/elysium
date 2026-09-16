@@ -53,6 +53,9 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
+      - name: Audit dependencies
+        run: bun run audit
+
       - name: Apply database migrations
         run: bun run db:migrate
 
