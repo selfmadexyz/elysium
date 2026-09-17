@@ -13,4 +13,15 @@ describe('backend app', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ success: true, status: 'healthy' });
   });
+
+  it('rejects unauthenticated post reads', async () => {
+    const response = await app.handle(new Request('http://localhost/api/posts/'));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(await response.json()).toEqual({
+      error: 'Unauthorized',
+      message: 'Authentication required',
+    });
+  });
 });
