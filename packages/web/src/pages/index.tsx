@@ -1,5 +1,9 @@
 import { HeroSection } from '@frontend/components/hero-section';
 
 export default function Index() {
-  return <HeroSection />;
+  return (
+    <main id="main-content">
+      <HeroSection />
+    </main>
+  );
 }

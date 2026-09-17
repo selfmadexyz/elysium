@@ -8,7 +8,12 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' }).mount(auth
         headers,
       });
 
-      if (!session) return status(401);
+      if (!session) {
+        return status(401, {
+          error: 'Unauthorized',
+          message: 'Authentication required',
+        });
+      }
 
       return {
         user: session.user,

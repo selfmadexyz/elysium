@@ -1,10 +1,11 @@
 import type { CreatePostRequest } from '@backend/modules/posts/model';
 import { client } from '@frontend/lib/client';
-import { queryClient } from '@frontend/lib/query-client';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export function useCreatePost() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (request: CreatePostRequest) => {
       const response = await client.api.posts.post(request);
