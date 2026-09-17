@@ -1,6 +1,6 @@
 import { table } from '@backend/database/schema';
 import { db } from '@backend/lib/db';
-import { InternalServerError, NotFoundError, ServerError } from '@backend/lib/errors';
+import { InternalServerError, NotFoundError } from '@backend/lib/errors';
 import type { ListPostsQuery } from '@backend/modules/posts/model';
 import type { CreatePostRequest, PostResponse, UpdatePostRequest } from '@elysium/contracts/posts';
 import { and, eq } from 'drizzle-orm';
@@ -60,61 +60,36 @@ export const drizzlePostsRepository: PostsRepository = {
   },
 };
 
-const asInternalError = (message: string, error: unknown): never => {
-  if (error instanceof ServerError) throw error;
-  throw new InternalServerError(message, error);
-};
-
 export function createPostsService(repository: PostsRepository) {
   return {
     async list(authorId: string, pagination: Partial<PostPagination> = {}): Promise<PostResponse[]> {
-      try {
-        return await repository.listByAuthor(authorId, {
-          limit: pagination.limit ?? 20,
-          offset: pagination.offset ?? 0,
-        });
-      } catch (error) {
-        return asInternalError('Failed to fetch posts', error);
-      }
+      return repository.listByAuthor(authorId, {
+        limit: pagination.limit ?? 20,
+        offset: pagination.offset ?? 0,
+      });
     },
 
     async get(id: number, authorId: string): Promise<PostResponse> {
-      try {
-        const post = await repository.findByIdAndAuthor(id, authorId);
-        if (!post) throw new NotFoundError(`Post with id ${id} not found`);
-        return post;
-      } catch (error) {
-        return asInternalError('Failed to fetch post', error);
-      }
+      const post = await repository.findByIdAndAuthor(id, authorId);
+      if (!post) throw new NotFoundError(`Post with id ${id} not found`);
+      return post;
     },
 
     async create(authorId: string, request: CreatePostRequest): Promise<PostResponse> {
-      try {
-        const post = await repository.create(authorId, request);
-        if (!post) throw new InternalServerError('Failed to create post');
-        return post;
-      } catch (error) {
-        return asInternalError('Failed to create post', error);
-      }
+      const post = await repository.create(authorId, request);
+      if (!post) throw new InternalServerError('Failed to create post');
+      return post;
     },
 
     async update(id: number, authorId: string, request: UpdatePostRequest): Promise<PostResponse> {
-      try {
-        const post = await repository.update(id, authorId, request);
-        if (!post) throw new NotFoundError(`Post with id ${id} not found`);
-        return post;
-      } catch (error) {
-        return asInternalError('Failed to update post', error);
-      }
+      const post = await repository.update(id, authorId, request);
+      if (!post) throw new NotFoundError(`Post with id ${id} not found`);
+      return post;
     },
 
     async delete(id: number, authorId: string): Promise<void> {
-      try {
-        const deleted = await repository.delete(id, authorId);
-        if (!deleted) throw new NotFoundError(`Post with id ${id} not found`);
-      } catch (error) {
-        return asInternalError('Failed to delete post', error);
-      }
+      const deleted = await repository.delete(id, authorId);
+      if (!deleted) throw new NotFoundError(`Post with id ${id} not found`);
     },
   };
 }

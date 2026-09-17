@@ -66,15 +66,31 @@ describe('posts ownership', () => {
     await expect(service.delete(1, 'bob')).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it('redacts unexpected repository failures behind an internal error', async () => {
+  it('propagates unexpected repository failures without replacing the error or its cause', async () => {
+    const error = new Error('database detail', { cause: new Error('connection lost') });
+    const reject = async () => {
+      throw error;
+    };
     const service = createPostsService(
       createRepository({
-        listByAuthor: async () => {
-          throw new Error('database detail');
-        },
+        listByAuthor: reject,
+        findByIdAndAuthor: reject,
+        create: reject,
+        update: reject,
+        delete: reject,
       }),
     );
 
-    await expect(service.list('alice')).rejects.toBeInstanceOf(InternalServerError);
+    await expect(service.list('alice')).rejects.toBe(error);
+    await expect(service.get(1, 'alice')).rejects.toBe(error);
+    await expect(service.create('alice', { title: 'Post', body: 'Body' })).rejects.toBe(error);
+    await expect(service.update(1, 'alice', { title: 'Updated' })).rejects.toBe(error);
+    await expect(service.delete(1, 'alice')).rejects.toBe(error);
+  });
+
+  it('reports an internal failure when an insert returns no post', async () => {
+    const service = createPostsService(createRepository());
+
+    await expect(service.create('alice', { title: 'Post', body: 'Body' })).rejects.toBeInstanceOf(InternalServerError);
   });
 });

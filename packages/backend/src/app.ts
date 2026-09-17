@@ -56,10 +56,24 @@ export function createApp() {
     .onError(({ code, error, set }) => {
       const errorName = error instanceof Error ? error.name : String(code);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[${code}] ${errorName}: ${errorMessage}`);
+      const isClientError =
+        code === 'VALIDATION' ||
+        code === 'PARSE' ||
+        code === 'NOT_FOUND' ||
+        (error instanceof ServerError && error.status < 500);
+
+      if (!isClientError) {
+        console.error(`[${code}] ${errorName}: ${errorMessage}`, error);
+      }
 
       if (error instanceof ServerError) {
         set.status = error.status;
+        if (env.NODE_ENV === 'production' && error.status >= 500) {
+          return {
+            error: 'Internal Server Error',
+            message: 'Something went wrong',
+          };
+        }
         return {
           error: error.name,
           message: error.message,
