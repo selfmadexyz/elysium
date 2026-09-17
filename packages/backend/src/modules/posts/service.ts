@@ -1,7 +1,8 @@
 import { table } from '@backend/database/schema';
 import { db } from '@backend/lib/db';
 import { InternalServerError, NotFoundError, ServerError } from '@backend/lib/errors';
-import type { CreatePostRequest, ListPostsQuery, PostResponse, UpdatePostRequest } from '@backend/modules/posts/model';
+import type { ListPostsQuery } from '@backend/modules/posts/model';
+import type { CreatePostRequest, PostResponse, UpdatePostRequest } from '@elysium/contracts/posts';
 import { and, eq } from 'drizzle-orm';
 
 export type PostPagination = Required<ListPostsQuery>;

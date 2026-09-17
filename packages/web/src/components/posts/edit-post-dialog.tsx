@@ -1,4 +1,4 @@
-import type { PostResponse } from '@backend/modules/posts/model';
+import type { PostResponse } from '@elysium/contracts/posts';
 import { Button } from '@frontend/components/ui/button';
 import {
   Dialog,
