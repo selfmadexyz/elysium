@@ -5,13 +5,7 @@ export const postSchema = z.object({
   body: z.string().min(1, 'Body is required'),
 });
 
-export const passwordSchema = z
-  .string()
-  .min(14, 'Use at least 14 characters')
-  .max(128)
-  .refine((val) => !/\s/.test(val), {
-    message: 'Space is not allowed',
-  });
+export const passwordSchema = z.string().min(14, 'Use at least 14 characters').max(128);
 
 export const signUpSchema = z
   .object({
@@ -32,5 +26,13 @@ export const signInSchema = z.object({
 });
 
 export const redirectSearchSchema = z.object({
-  redirect: z.string().optional(),
+  redirect: z
+    .string()
+    .refine((value) => {
+      if (!value.startsWith('/') || value.includes('\\')) return false;
+
+      const localOrigin = 'https://elysium.invalid';
+      return new URL(value, localOrigin).origin === localOrigin;
+    }, 'Redirect must stay on this site')
+    .optional(),
 });
