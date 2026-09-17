@@ -28,6 +28,9 @@ const defaultSeo = seo({
 });
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  headers: () => ({
+    'Cache-Control': 'no-store',
+  }),
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

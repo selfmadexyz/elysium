@@ -11,10 +11,46 @@ export default defineConfig({
     tanstackStart({ srcDirectory: 'src' }),
     viteReact(),
     nitro({
-      preset: 'bun',
+      ...(process.env.VERCEL ? {} : { preset: 'bun' }),
       routeRules: {
+        '/assets/**': {
+          headers: {
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        },
+        '/favicon.ico': {
+          headers: {
+            'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        },
+        '/logo192.png': {
+          headers: {
+            'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        },
+        '/logo512.png': {
+          headers: {
+            'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        },
+        '/manifest.json': {
+          headers: {
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+          },
+        },
+        '/robots.txt': {
+          headers: {
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+          },
+        },
+        '/sitemap.xml': {
+          headers: {
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+          },
+        },
         '/**': {
           headers: {
+            'Cache-Control': 'no-store',
             'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
             'Referrer-Policy': 'strict-origin-when-cross-origin',
             'X-Content-Type-Options': 'nosniff',
