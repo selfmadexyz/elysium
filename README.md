@@ -39,7 +39,7 @@ Read [Architecture](docs/architecture.md) for ownership rules, request flows, an
 ## Prerequisites
 
 - [Bun 1.4.2](https://bun.sh/)
-- [Docker](https://docs.docker.com/get-docker/) with the daemon running
+- [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2 and the daemon running
 - [just](https://github.com/casey/just)
 - OpenSSL for generating the local auth secret
 
@@ -98,7 +98,7 @@ The root development script loads `packages/backend/.env` into the unified TanSt
 just dev
 ```
 
-`just dev` starts PostgreSQL, waits until it is ready, applies migrations, and runs the unified TanStack Start and Elysia development server.
+`just dev` starts PostgreSQL from `compose.yaml`, waits until it is healthy, applies migrations, and runs the unified TanStack Start and Elysia development server.
 
 Open <http://localhost:3000>. Verify the same-origin API:
 
@@ -114,7 +114,7 @@ Swagger is available at <http://localhost:3000/api/swagger> outside production. 
 just stop
 ```
 
-`just reset-db` removes the PostgreSQL container and named volume. It permanently deletes the local database.
+`just reset-db` tears down the Compose project and its PostgreSQL volume. It permanently deletes the local database.
 
 ## Commands
 
