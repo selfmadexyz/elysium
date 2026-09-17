@@ -31,7 +31,7 @@
     "test": "bun run --sequential --filter '*' test",
     "db:migrate": "bun run --cwd packages/backend db:migrate",
     "db:generate": "bun run --cwd packages/backend db:generate",
-    "audit": "bun audit"
+    "audit": "bun audit --audit-level=high"
   },
   "devDependencies": {
     "@biomejs/biome": "2.1.2",
