@@ -104,7 +104,18 @@ Swagger is disabled automatically when `NODE_ENV=production`.
 
 ## Static assets and caching
 
-Cache fingerprinted JavaScript, CSS, fonts, and images as immutable. Do not apply immutable caching to HTML, the web manifest, `robots.txt`, or `sitemap.xml`.
+The Bun Nitro server owns SSR documents and static files. Elysia remains the in-process handler for `/api/*`; it does not serve an SPA fallback or a shared `index.html`.
+
+| Response | Cache policy |
+| --- | --- |
+| SSR HTML | `no-store` |
+| `/api/*` | `no-store` |
+| Fingerprinted `/assets/*` | public, one year, immutable |
+| Manifest | public, one hour, stale for one day while revalidating |
+| Icons | public, one day, stale for one week while revalidating |
+| `robots.txt` and `sitemap.xml` | public, one hour, stale for one day while revalidating |
+
+Keep personalized HTML and API responses out of browser and shared caches. Add longer caching to a public SSR route only when its data, invalidation behavior, and CDN policy are explicitly designed for it.
 
 ## Smoke checks
 
