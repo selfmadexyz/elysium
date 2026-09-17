@@ -1,10 +1,13 @@
 node_modules
-dist
+.output
+**/dist
+coverage
 .git
+.github
 .gitignore
 *.md
 .env
 .env.*
 .DS_Store
 *.log
-packages/backend/drizzle
+.omc
