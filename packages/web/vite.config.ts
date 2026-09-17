@@ -11,7 +11,7 @@ export default defineConfig({
     tanstackStart({ srcDirectory: 'src' }),
     viteReact(),
     nitro({
-      preset: 'bun',
+      ...(process.env.VERCEL ? {} : { preset: 'bun' }),
       routeRules: {
         '/**': {
           headers: {
