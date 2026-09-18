@@ -5,6 +5,9 @@ POSTGRES_VOLUME := "elysium-postgres-data"
 POSTGRES_IMAGE := "postgres:17-alpine"
 POSTGRES_PORT := "5434"
 DATABASE_URL := "postgresql://postgres:localpassword@localhost:" + POSTGRES_PORT + "/myapp"
+TEST_POSTGRES_CONTAINER := "elysium-postgres-test"
+TEST_POSTGRES_PORT := env_var_or_default("TEST_POSTGRES_PORT", "55434")
+TEST_DATABASE_URL := "postgresql://postgres:localpassword@localhost:" + TEST_POSTGRES_PORT + "/elysium_test"
 
 default:
     @just --list
@@ -33,6 +36,44 @@ lint:
 
 test:
     bun run test
+
+# Run database integration tests against an isolated, ephemeral PostgreSQL container.
+test-integration:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    created=0
+    cleanup() {
+        if [[ "$created" == "1" ]]; then
+            docker stop {{ TEST_POSTGRES_CONTAINER }} >/dev/null 2>&1 || true
+        fi
+    }
+    trap cleanup EXIT
+
+    docker run --rm --name {{ TEST_POSTGRES_CONTAINER }} \
+        --env POSTGRES_USER=postgres \
+        --env POSTGRES_PASSWORD=localpassword \
+        --env POSTGRES_DB=elysium_test \
+        --detach \
+        --publish "127.0.0.1:{{ TEST_POSTGRES_PORT }}:5432" \
+        {{ POSTGRES_IMAGE }} >/dev/null
+    created=1
+
+    ready=0
+    for attempt in {1..30}; do
+        if docker exec {{ TEST_POSTGRES_CONTAINER }} pg_isready --username postgres --dbname elysium_test >/dev/null 2>&1; then
+            ready=1
+            break
+        fi
+        sleep 1
+    done
+    if [[ "$ready" != "1" ]]; then
+        echo "Test PostgreSQL did not become ready in time" >&2
+        exit 1
+    fi
+
+    DATABASE_URL="{{ TEST_DATABASE_URL }}" bun run db:migrate
+    DATABASE_URL="{{ TEST_DATABASE_URL }}" RUN_DATABASE_TESTS=1 bun run --cwd packages/backend test
 
 build:
     bun run build

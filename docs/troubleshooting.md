@@ -112,13 +112,19 @@ Use `just generate-migration` after schema edits. Use `db:push` only for local d
 
 ## Tests fail before running
 
-Backend tests preload deterministic test environment values. Some future integration tests may also require the local PostgreSQL service. Run:
+Backend tests preload deterministic values without replacing a `DATABASE_URL` supplied by CI. Database integration tests require Docker. Run:
 
 ```bash
-just postgres-start
-just migrate
-just test
+just test-integration
 ```
+
+This creates an ephemeral PostgreSQL container with a dedicated `elysium_test` database on host port `55434`. If that port is occupied, choose another one:
+
+```bash
+TEST_POSTGRES_PORT=55435 just test-integration
+```
+
+When `RUN_DATABASE_TESTS=1`, the test suite refuses to run unless `DATABASE_URL` names the database exactly `elysium_test`.
 
 ## Ports are already in use
 
@@ -127,5 +133,6 @@ Defaults:
 - TanStack Start: `3000`
 - standalone Elysia: `3001`
 - PostgreSQL host port: `5434`
+- integration-test PostgreSQL host port: `55434` (override with `TEST_POSTGRES_PORT`)
 
 Changing the public web port also requires updating `APP_URL`, `BETTER_AUTH_URL`, `VITE_SITE_URL`, and the OAuth callback.

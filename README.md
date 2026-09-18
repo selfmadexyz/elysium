@@ -129,6 +129,7 @@ Run `just` to list the available recipes.
 | `just check` | Run lint, type checks, tests, and production builds |
 | `just lint` | Run repository type and Biome checks |
 | `just test` | Run all workspace test scripts |
+| `just test-integration` | Run backend database tests in an isolated, ephemeral PostgreSQL container |
 | `just build` | Build Elysia and the TanStack Start server |
 | `just migrate` | Apply committed migrations to the local container database |
 | `just generate-migration` | Generate a Drizzle migration |
@@ -220,7 +221,7 @@ packages/
 
 ## Current limits
 
-- No web component or browser end-to-end tests are committed yet.
+- No web component, auth lifecycle, or browser end-to-end tests are committed yet.
 - Distributed rate limiting, audit logging, email delivery, background jobs, and production observability are not included.
 - Tenant isolation and product-specific permissions remain application work.
 - The included social image is the project logo rather than a dedicated preview card.

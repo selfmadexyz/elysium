@@ -78,10 +78,10 @@ The current Bun tests cover:
 - importing Elysia without opening a socket;
 - the health and unauthenticated API paths;
 - environment validation;
-- owner-scoped posts service behavior;
-- redaction of unexpected repository failures.
+- owner-scoped post queries against PostgreSQL;
+- redaction of unexpected database failures.
 
-They are a foundation rather than complete application coverage. Add integration tests against PostgreSQL, auth lifecycle tests, and product-specific authorization cases.
+Database integration tests are skipped by the ordinary test command. Run `just test-integration` from the repository root to create an isolated `elysium_test` database, apply migrations, run the tests, and remove its container. The command uses host port `55434`; override it with `TEST_POSTGRES_PORT=<port> just test-integration`. CI enables the same tests. Add auth lifecycle tests and product-specific authorization cases before shipping.
 
 ## Database workflow
 
