@@ -46,7 +46,7 @@ Elysium supplies integration examples, not a production guarantee. Treat this ch
 
 ## Testing and quality
 
-- [ ] Add database integration tests and complete auth lifecycle coverage.
+- [ ] Complete auth lifecycle coverage and add product-specific authorization tests.
 - [ ] Extend authorization, validation, service, and migration coverage for the product domain.
 - [ ] Cover critical UI and end-to-end product flows.
 - [ ] Test production builds rather than only development servers.
