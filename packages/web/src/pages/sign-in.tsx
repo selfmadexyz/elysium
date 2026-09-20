@@ -1,5 +1,5 @@
 import { Button } from '@frontend/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader } from '@frontend/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@frontend/components/ui/card';
 import {
   Field,
   FieldDescription,
@@ -24,7 +24,7 @@ export function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
   const handleSignUpWithGoogle = async () => {
     const { error } = await auth.signIn.social({
       provider: 'google',
-      callbackURL: search.redirect ?? '/posts',
+      callbackURL: search.redirect ?? window.location.origin,
     });
     if (error) {
       toast.error(error.message ?? 'Something went wrong');
@@ -43,24 +43,23 @@ export function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
       const { error } = await auth.signIn.email({
         email: value.email,
         password: value.password,
-        callbackURL: search.redirect ?? '/posts',
+        callbackURL: window.location.origin,
       });
       if (error) {
         toast.error(error.message ?? 'Something went wrong');
         return;
       }
       formApi.reset();
-      window.location.assign(search.redirect ?? '/posts');
     },
   });
 
   return (
-    <main id="main-content" className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
         <div className={cn('flex flex-col gap-6', className)} {...props}>
           <Card>
             <CardHeader>
-              <h1 className="font-medium text-base">Log in to your account</h1>
+              <CardTitle>Login to your account</CardTitle>
               <CardDescription>Enter your email below to login to your account</CardDescription>
             </CardHeader>
             <CardContent>
@@ -86,7 +85,6 @@ export function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
                             onChange={(e) => field.handleChange(e.target.value)}
                             aria-invalid={isInvalid}
                             placeholder="Enter your email"
-                            autoComplete="email"
                             required
                             type="email"
                           />
@@ -110,7 +108,6 @@ export function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
                             onChange={(e) => field.handleChange(e.target.value)}
                             aria-invalid={isInvalid}
                             placeholder="Enter your password"
-                            autoComplete="current-password"
                             type="password"
                             required
                           />
@@ -154,7 +151,8 @@ export function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
                       Login with Google
                     </Button>
                     <FieldDescription className="text-center">
-                      Don&apos;t have an account? <Link to="/sign-up">Sign up</Link>
+                      Don&apos;t have an account?
+                      <Link to="/sign-up">Sign up</Link>
                     </FieldDescription>
                   </Field>
                 </FieldGroup>
@@ -163,6 +161,6 @@ export function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
           </Card>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

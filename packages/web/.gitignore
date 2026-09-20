@@ -2,10 +2,11 @@ node_modules
 .DS_Store
 dist
 dist-ssr
-.vercel
+.output
 *.local
 count.txt
 .env
 .nitro
 .tanstack
+.vercel
 .wrangler

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 const handle = async ({ request }: { request: Request }) => {
-  const { app } = await import('@backend/app');
+  const { app } = await import('@backend/index');
   return app.fetch(request);
 };
 

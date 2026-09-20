@@ -5,32 +5,20 @@ import viteReact from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     tailwindcss(),
-    tanstackStart({ srcDirectory: 'src' }),
+    tanstackStart(),
+    ...(mode === 'test' ? [] : [nitro({ config: { externals: { external: ['pg'] } } })]),
     viteReact(),
-    nitro({
-      ...(process.env.VERCEL ? {} : { preset: 'bun' }),
-      routeRules: {
-        '/**': {
-          headers: {
-            'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-            'Referrer-Policy': 'strict-origin-when-cross-origin',
-            'X-Content-Type-Options': 'nosniff',
-            'X-Frame-Options': 'DENY',
-          },
-        },
-      },
-    }),
   ],
   resolve: {
-    tsconfigPaths: true,
     alias: {
+      '@backend': fileURLToPath(new URL('../backend/src', import.meta.url)),
       '@frontend': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   ssr: {
-    noExternal: ['@noble/ciphers'],
+    external: ['pg'],
   },
-});
+}));
