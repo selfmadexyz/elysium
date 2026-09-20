@@ -11,10 +11,10 @@ COPY . .
 
 RUN bun run --cwd packages/web build
 
-# ---- Serve ----
+# ---- Run ----
 FROM oven/bun:latest
 WORKDIR /app
-COPY --from=build /app/packages/web/dist ./dist
-RUN bun install -g serve
+ENV NODE_ENV=production
+COPY --from=build /app/packages/web/.output ./.output
 EXPOSE 3000
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
+CMD ["bun", ".output/server/index.mjs"]

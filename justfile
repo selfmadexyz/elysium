@@ -3,7 +3,7 @@
 POSTGRES_CONTAINER := "elysium-postgres"
 POSTGRES_PORT := "5434"
 
-# Start services (PostgreSQL, install, migrate, dev)
+# Start PostgreSQL, migrate, and run the full-stack dev server
 start:
     #!/bin/bash
     set -e
@@ -24,8 +24,8 @@ start:
     fi
 
     bun install
-    cd packages/backend && bun run db:migrate
-    bun run dev
+    (cd packages/backend && bun run db:migrate)
+    cd packages/web && bun run dev
 
 # Stop services
 stop:

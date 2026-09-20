@@ -9,7 +9,7 @@
 ## Tech Stack
 
 - **Runtime:** Bun
-- **Frontend:** React 19 + TanStack Router/Query + Tailwind CSS 4
+- **Frontend:** React 19 + TanStack Start/Query + Tailwind CSS 4
 - **Backend:** Elysia + TypeScript
 - **Database:** PostgreSQL + Drizzle ORM + drizzle-typebox
 - **Auth:** Better Auth (Google OAuth)
@@ -26,10 +26,7 @@
 2. **Setup environment variables**
 
    ```bash
-   # Backend
    cp packages/backend/.env.example packages/backend/.env
-   # Frontend
-   cp packages/web/.env.example packages/web/.env
    ```
 
 3. **Configure environment variables**
@@ -37,7 +34,7 @@
    - Generate auth secret: `openssl rand -base64 32`
    - Setup PostgreSQL database
 
-4. **Start backend** (PostgreSQL, migrations, and backend server)
+4. **Start the application**
 
    ```bash
    just start
@@ -47,15 +44,9 @@
    - Start PostgreSQL container
    - Install dependencies
    - Run database migrations
-   - Start backend server
+   - Start the TanStack Start dev server with the Elysia API
 
-5. **Start web dev server** (in a separate terminal)
-
-   ```bash
-   cd packages/web && bun run dev
-   ```
-
-6. **Stop everything**
+5. **Stop PostgreSQL**
 
    ```bash
    just stop
@@ -100,9 +91,9 @@ Each module follows the same pattern:
 - Auto re-throw in `ServerError` constructor
 - Global error handler in `index.ts`
 
-### Frontend - TanStack Router + Query
+### Frontend - TanStack Start + Query
 
-- **Router:** Code-based with `createRoute()`, protected routes, data loaders
+- **Router:** File-based routes with SSR, protected routes, and per-route metadata
 - **Query:** Custom hooks pattern, consistent error handling, auto cache invalidation
 
 ## Available Commands (justfile)
@@ -143,27 +134,20 @@ bunx drizzle-kit studio
 PORT=3001
 DATABASE_URL=postgresql://postgres:localpassword@localhost:5434/myapp
 BETTER_AUTH_SECRET=<openssl rand -base64 32>
-BETTER_AUTH_URL=http://localhost:3001
+BETTER_AUTH_URL=http://localhost:3000
 APP_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=<from console.cloud.google.com>
 GOOGLE_CLIENT_SECRET=<from console.cloud.google.com>
 ```
 
-**Frontend** (`packages/web/.env`):
-
-```env
-VITE_API_URL=http://localhost:3001
-VITE_AUTH_URL=http://localhost:3001
-```
-
 **Google OAuth Setup:**
 
 1. <https://console.cloud.google.com> → Create project → OAuth 2.0
-2. Add redirect URI: `http://localhost:3001/api/auth/callback/google`
+2. Add redirect URI: `http://localhost:3000/api/auth/callback/google`
 
 ## Documentation
 
-- **API Docs:** <http://localhost:3001/swagger>
+- **API Docs:** <http://localhost:3000/api/swagger>
 - **DB Studio:** `bunx drizzle-kit studio` in `packages/backend`
 - **PostgreSQL URL:** Run `just postgres-url` to see the connection string
 

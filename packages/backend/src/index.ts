@@ -13,7 +13,7 @@ import cors from '@elysiajs/cors';
 import swagger from '@elysiajs/swagger';
 import { Elysia } from 'elysia';
 
-const app = new Elysia()
+export const app = new Elysia()
   .error({
     ServerError,
     BadRequestError,
@@ -79,6 +79,7 @@ const app = new Elysia()
   )
   .use(
     swagger({
+      path: '/api/swagger',
       documentation: {
         info: {
           title: 'Starter API',
@@ -93,9 +94,11 @@ const app = new Elysia()
       },
     }),
   )
-  .use(routes)
-  .listen(env.PORT);
+  .use(routes);
 
 export type App = typeof app;
 
-console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
+if (import.meta.main) {
+  app.listen(env.PORT);
+  console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
+}

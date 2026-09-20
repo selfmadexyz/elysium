@@ -4,6 +4,9 @@
     "indentStyle": "space",
     "lineWidth": 120
   },
+  "files": {
+    "includes": ["**", "!**/routeTree.gen.ts"]
+  },
   "javascript": {
     "formatter": {
       "quoteStyle": "single"
