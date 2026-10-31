@@ -11,6 +11,7 @@ describe('backend app', () => {
     const response = await app.handle(new Request('http://localhost/api/health/'));
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
     expect(await response.json()).toMatchObject({ success: true, status: 'healthy' });
   });
 

@@ -44,6 +44,9 @@ export function createApp() {
       idleTimeout: 30,
     },
   })
+    .onRequest(({ set }) => {
+      set.headers['Cache-Control'] = 'no-store';
+    })
     .error({
       ServerError,
       BadRequestError,
