@@ -4,9 +4,6 @@
     "indentStyle": "space",
     "lineWidth": 120
   },
-  "files": {
-    "includes": ["**", "!**/routeTree.gen.ts"]
-  },
   "javascript": {
     "formatter": {
       "quoteStyle": "single"
@@ -20,12 +17,8 @@
           "level": "error",
           "fix": "safe",
           "options": {
-            "attributes": [
-              "className"
-            ],
-            "functions": [
-              "cn"
-            ]
+            "attributes": ["className"],
+            "functions": ["cn"]
           }
         }
       },
@@ -38,5 +31,26 @@
         "noUnusedVariables": "error"
       }
     }
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules/**",
+      "!**/.git/**",
+      "!**/.output/**",
+      "!**/.nitro/**",
+      "!**/dist/**",
+      "!**/coverage/**",
+      "!**/playwright-report/**",
+      "!**/test-results/**",
+      "!**/drizzle/meta/**",
+      "!.omc/**",
+      "!**/routeTree.gen.ts"
+    ]
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
   }
 }

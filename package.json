@@ -6,12 +6,28 @@
   ],
   "devDependencies": {
     "@types/bun": "^1.3.5",
-    "elysia": "1.4.27"
+    "elysia": "1.4.27",
+    "@biomejs/biome": "2.1.2",
+    "typescript": "5.9.3",
+    "@playwright/test": "1.60.0"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48"
   },
   "overrides": {
     "@sinclair/typebox": "0.34.48"
+  },
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "hooks": "git config core.hooksPath .githooks",
+    "lint": "biome check .",
+    "lint:comments": "bun scripts/check-comments.ts",
+    "format": "biome check . --write",
+    "typecheck": "tsc --noEmit -p tsconfig.harness.json && bun run --filter \"*\" typecheck",
+    "test": "bun run test:harness && bun run --filter \"*\" test",
+    "test:harness": "bun test scripts/check-comments.test.ts",
+    "build": "bun run --cwd packages/web build",
+    "audit": "bun audit --prod --audit-level=high",
+    "test:e2e": "playwright test"
   }
 }
