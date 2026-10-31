@@ -8,8 +8,9 @@
     "preview": "vite preview",
     "start": "bun --env-file=../backend/.env .output/server/index.mjs",
     "test": "vitest run",
-    "lint": "tsc && biome check ./src",
-    "format": "biome check ./src --unsafe --write"
+    "lint": "biome check ./src",
+    "format": "biome check ./src --unsafe --write",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
