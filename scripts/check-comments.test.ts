@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { inspectDiff } from './check-comments';
 
 const reviewMarker = ['pony', 'tail:'].join('');
+const fixtureEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 
 describe('added comment guard', () => {
   test('reports new lines with accurate positions after deleted lines', () => {
@@ -45,7 +46,7 @@ describe('added comment guard', () => {
 test('CLI compares committed refs independently of working tree and fails on added markers', () => {
   const directory = mkdtempSync(join(tmpdir(), 'elysium-comments-'));
   const command = (args: string[]) => {
-    const result = spawnSync('git', args, { cwd: directory, encoding: 'utf8' });
+    const result = spawnSync('git', args, { cwd: directory, encoding: 'utf8', env: fixtureEnv });
     if (result.status !== 0) throw new Error(result.stderr);
     return result.stdout.trim();
   };
@@ -53,6 +54,7 @@ test('CLI compares committed refs independently of working tree and fails on add
     spawnSync(process.execPath, [join(import.meta.dir, 'check-comments.ts'), ...args], {
       cwd: directory,
       encoding: 'utf8',
+      env: fixtureEnv,
     });
   try {
     command(['init', '-q']);
@@ -86,5 +88,51 @@ test('the guard and its fixtures can be committed without blocking themselves', 
       .map((line) => `+${line}`)
       .join('\n')}`;
     expect(inspectDiff(diff).filter((finding) => finding.blocked)).toEqual([]);
+  }
+});
+
+test('hook Git environment cannot redirect fixture operations into the calling repository', () => {
+  const outer = mkdtempSync(join(tmpdir(), 'elysium-hook-caller-'));
+  const command = (args: string[]) => {
+    const result = spawnSync('git', args, { cwd: outer, encoding: 'utf8', env: fixtureEnv });
+    if (result.status !== 0) throw new Error(result.stderr);
+    return result.stdout.trim();
+  };
+  try {
+    command(['init', '-q']);
+    command(['config', 'user.email', 'outer@example.invalid']);
+    command(['config', 'user.name', 'Outer repository']);
+    command(['config', 'commit.gpgsign', 'false']);
+    writeFileSync(join(outer, 'tracked.ts'), 'export const outer = true;\n');
+    command(['add', '.']);
+    command(['commit', '-qm', 'outer baseline']);
+    writeFileSync(join(outer, 'untracked.ts'), 'export const pending = true;\n');
+    const head = command(['rev-parse', 'HEAD']);
+    const status = command(['status', '--porcelain=v1']);
+    const config = readFileSync(join(outer, '.git/config'), 'utf8');
+    const result = spawnSync(
+      process.execPath,
+      ['test', join(import.meta.dir, 'check-comments.test.ts'), '--test-name-pattern', '^CLI compares committed refs'],
+      {
+        cwd: outer,
+        encoding: 'utf8',
+        env: {
+          ...fixtureEnv,
+          GIT_DIR: join(outer, '.git'),
+          GIT_WORK_TREE: outer,
+          GIT_INDEX_FILE: join(outer, '.git/index'),
+          GIT_COMMON_DIR: join(outer, '.git'),
+          GIT_CONFIG_COUNT: '1',
+          GIT_CONFIG_KEY_0: 'user.name',
+          GIT_CONFIG_VALUE_0: 'Inherited hook identity',
+        },
+      },
+    );
+    expect(command(['rev-parse', 'HEAD'])).toBe(head);
+    expect(command(['status', '--porcelain=v1'])).toBe(status);
+    expect(readFileSync(join(outer, '.git/config'), 'utf8')).toBe(config);
+    if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  } finally {
+    rmSync(outer, { recursive: true, force: true });
   }
 });
