@@ -40,17 +40,23 @@ Use the platform's runtime secret configuration in production. Do not expose bac
 Confirm Docker is running:
 
 ```bash
-docker ps --filter name=elysium-postgres
+docker compose ps postgres
 ```
 
-`just postgres-start` waits up to 30 seconds for PostgreSQL readiness. If an old local database is incompatible and its data is disposable:
+Inspect the service logs when its health check fails:
+
+```bash
+docker compose logs postgres
+```
+
+`just postgres-start` waits for the Compose health check. If an old local database is incompatible and its data is disposable:
 
 ```bash
 just reset-db
 just postgres-start
 ```
 
-`just reset-db` permanently removes the container and named volume.
+`just reset-db` permanently removes the Compose project and its named volume.
 
 ## The web page works but `/api/*` fails
 
