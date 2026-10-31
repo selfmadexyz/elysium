@@ -1,11 +1,11 @@
 # ---- Build ----
-FROM oven/bun:1 AS build
+FROM oven/bun:1.4.2 AS build
 WORKDIR /app
 
 COPY package.json bun.lock ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/web/package.json ./packages/web/
-RUN bun install --ignore-scripts
+RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.base.json ./
 COPY packages/backend ./packages/backend

@@ -1,19 +1,15 @@
+import { getSession } from '@frontend/lib/auth-server';
 import { redirectSearchSchema } from '@frontend/lib/validations';
 import { SignIn } from '@frontend/pages/sign-in';
-import { rootRoute } from '@frontend/routes/root';
-import { createRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
-export const signInRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/sign-in',
+export const Route = createFileRoute('/sign-in')({
   component: SignIn,
   validateSearch: redirectSearchSchema,
-  beforeLoad: ({ context, location }) => {
-    if (context.auth.session) {
-      throw redirect({
-        to: '/',
-        search: { redirect: location.href },
-      });
+  head: () => ({ meta: [{ title: 'Sign in' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  beforeLoad: async ({ location }) => {
+    if (await getSession()) {
+      throw redirect({ to: '/', search: { redirect: location.href } });
     }
   },
 });

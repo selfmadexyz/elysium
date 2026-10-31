@@ -1,20 +1,20 @@
 # ---- Build ----
-FROM oven/bun:latest AS build
+FROM oven/bun:1.4.2 AS build
 WORKDIR /app
 
 COPY package.json bun.lock ./
 COPY packages/web/package.json ./packages/web/
 COPY packages/backend/package.json ./packages/backend/
-RUN bun install --ignore-scripts
+RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY . .
 
 RUN bun run --cwd packages/web build
 
-# ---- Serve ----
-FROM oven/bun:latest
+# ---- Run ----
+FROM oven/bun:1.4.2
 WORKDIR /app
-COPY --from=build /app/packages/web/dist ./dist
-RUN bun install -g serve
+ENV NODE_ENV=production
+COPY --from=build /app/packages/web/.output ./.output
 EXPOSE 3000
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
+CMD ["bun", ".output/server/index.mjs"]

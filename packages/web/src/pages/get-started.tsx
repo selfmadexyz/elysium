@@ -114,13 +114,7 @@ export default function GetStarted() {
 
               <div>
                 <h3 className="mb-3 font-medium">2. Setup environment variables</h3>
-                <CodeBlock language="bash">
-                  {`# Backend
-cp packages/backend/.env.example packages/backend/.env
-
-# Frontend
-cp packages/web/.env.example packages/web/.env`}
-                </CodeBlock>
+                <CodeBlock language="bash">cp packages/backend/.env.example packages/backend/.env</CodeBlock>
               </div>
 
               <div>
@@ -158,17 +152,11 @@ cp packages/web/.env.example packages/web/.env`}
               </div>
 
               <div>
-                <h3 className="mb-3 font-medium">4. Start backend</h3>
+                <h3 className="mb-3 font-medium">4. Start the application</h3>
                 <CodeBlock language="bash">just start</CodeBlock>
                 <p className="mt-2 text-muted-foreground text-sm">
-                  This starts PostgreSQL, runs migrations, and launches the backend server.
+                  This starts PostgreSQL, runs migrations, and launches the TanStack Start server with the Elysia API.
                 </p>
-              </div>
-
-              <div>
-                <h3 className="mb-3 font-medium">5. Start web dev server</h3>
-                <p className="mb-2 text-muted-foreground text-sm">In a separate terminal:</p>
-                <CodeBlock language="bash">cd packages/web && bun run dev</CodeBlock>
               </div>
             </div>
           </section>
@@ -228,10 +216,10 @@ cp packages/web/.env.example packages/web/.env`}
               </div>
 
               <div className="rounded-lg border border-border bg-card p-6">
-                <h3 className="mb-3 font-medium">Frontend — TanStack Router + Query</h3>
+                <h3 className="mb-3 font-medium">Frontend — TanStack Start + Query</h3>
                 <p className="text-muted-foreground text-sm">
-                  Code-based routing with <code className="rounded bg-muted px-1.5 py-0.5 text-xs">createRoute()</code>,
-                  protected routes, custom hooks pattern, and auto cache invalidation.
+                  File-based routing with SSR, protected routes, per-route metadata, custom hooks, and automatic cache
+                  invalidation.
                 </p>
               </div>
             </div>
@@ -248,18 +236,10 @@ cp packages/web/.env.example packages/web/.env`}
                   {`PORT=3001
 DATABASE_URL=postgresql://postgres:localpassword@localhost:5434/myapp
 BETTER_AUTH_SECRET=<openssl rand -base64 32>
-BETTER_AUTH_URL=http://localhost:3001
+BETTER_AUTH_URL=http://localhost:3000
 APP_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=<from console.cloud.google.com>
 GOOGLE_CLIENT_SECRET=<from console.cloud.google.com>`}
-                </CodeBlock>
-              </div>
-
-              <div>
-                <h3 className="mb-3 font-medium">Frontend</h3>
-                <CodeBlock language="env">
-                  {`VITE_API_URL=http://localhost:3001
-VITE_AUTH_URL=http://localhost:3001`}
                 </CodeBlock>
               </div>
             </div>
@@ -294,7 +274,7 @@ VITE_AUTH_URL=http://localhost:3001`}
               </li>
             </ol>
             <div className="mt-3 ml-9">
-              <CodeBlock language="text">http://localhost:3001/api/auth/callback/google</CodeBlock>
+              <CodeBlock language="text">http://localhost:3000/api/auth/callback/google</CodeBlock>
             </div>
           </section>
 
@@ -308,7 +288,7 @@ VITE_AUTH_URL=http://localhost:3001`}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
                     <code className="text-sm">just start</code>
-                    <span className="text-muted-foreground text-sm">Start PostgreSQL + backend</span>
+                    <span className="text-muted-foreground text-sm">Start PostgreSQL + full-stack server</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
                     <code className="text-sm">just stop</code>
@@ -349,7 +329,7 @@ VITE_AUTH_URL=http://localhost:3001`}
             <h2 className="mb-6 font-semibold text-2xl">Documentation</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <a
-                href="http://localhost:3001/swagger"
+                href="http://localhost:3000/api/swagger"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
@@ -357,7 +337,7 @@ VITE_AUTH_URL=http://localhost:3001`}
                 <HugeiconsIcon icon={FileCode} className="size-5 text-primary" />
                 <div>
                   <p className="font-medium">API Docs</p>
-                  <p className="text-muted-foreground text-xs">Swagger UI at /swagger</p>
+                  <p className="text-muted-foreground text-xs">Swagger UI at /api/swagger</p>
                 </div>
               </a>
               <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
