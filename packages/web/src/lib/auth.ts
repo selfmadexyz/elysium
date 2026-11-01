@@ -1,10 +1,5 @@
-import { env } from '@frontend/config/env';
 import { createAuthClient } from 'better-auth/react';
 
 export const auth = createAuthClient({
-  baseURL: env.authUrl,
-  fetchOptions: {
-    credentials: 'include',
-    mode: 'cors',
-  },
+  baseURL: typeof window === 'undefined' ? 'http://localhost:3000' : window.location.origin,
 });

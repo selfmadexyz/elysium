@@ -1,8 +1,9 @@
-import type { App } from '@backend/index';
+import type { App } from '@backend/app';
 import { treaty } from '@elysiajs/eden';
-import { env } from '@frontend/config/env';
 
-export const client = treaty<App>(env.apiUrl, {
+const origin = typeof window === 'undefined' ? 'http://localhost:3000' : window.location.origin;
+
+export const client = treaty<App>(origin, {
   fetch: {
     credentials: 'include',
   },

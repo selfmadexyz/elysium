@@ -1,7 +1,7 @@
 import { CommonModel } from '@backend/lib/models';
 import { authMiddleware } from '@backend/modules/auth/middleware';
-import { PostModel } from '@backend/modules/posts/model';
-import * as PostsService from '@backend/modules/posts/service';
+import { listPostsQuery, PostModel } from '@backend/modules/posts/model';
+import { postsService } from '@backend/modules/posts/service';
 import { Elysia, t } from 'elysia';
 
 export const posts = new Elysia({
@@ -14,28 +14,36 @@ export const posts = new Elysia({
   .use(PostModel)
   .get(
     '/',
-    async () => {
-      return await PostsService.getAllPosts();
+    async ({ query, user }) => {
+      return await postsService.list(user.id, query);
     },
     {
+      auth: true,
+      query: listPostsQuery,
       detail: {
-        description: 'Get all posts',
-        summary: 'List all posts',
+        description: 'Get a page of your posts, newest first',
+        summary: 'List your posts',
       },
       response: {
         200: t.Array(t.Ref('post')),
+        400: 'error',
+        401: 'error',
         500: 'error',
       },
     },
   )
   .get(
     '/:id',
-    async ({ params }) => {
-      return await PostsService.getPostById(params.id);
+    async ({ params, user }) => {
+      return await postsService.get(params.id, user.id);
     },
     {
+      auth: true,
       params: t.Object({
         id: t.Numeric({
+          minimum: 1,
+          maximum: 2_147_483_647,
+          multipleOf: 1,
           error: 'Invalid post ID',
         }),
       }),
@@ -45,6 +53,7 @@ export const posts = new Elysia({
       response: {
         200: t.Ref('post'),
         400: 'error',
+        401: 'error',
         404: 'error',
         500: 'error',
       },
@@ -52,8 +61,8 @@ export const posts = new Elysia({
   )
   .post(
     '/',
-    async ({ body }) => {
-      return await PostsService.createPost(body);
+    async ({ body, user }) => {
+      return await postsService.create(user.id, body);
     },
     {
       auth: true,
@@ -71,13 +80,16 @@ export const posts = new Elysia({
   )
   .put(
     '/:id',
-    async ({ params, body }) => {
-      return await PostsService.updatePost(params.id, body);
+    async ({ params, body, user }) => {
+      return await postsService.update(params.id, user.id, body);
     },
     {
       auth: true,
       params: t.Object({
         id: t.Numeric({
+          minimum: 1,
+          maximum: 2_147_483_647,
+          multipleOf: 1,
           error: 'Invalid post ID',
         }),
       }),
@@ -96,14 +108,17 @@ export const posts = new Elysia({
   )
   .delete(
     '/:id',
-    async ({ params }) => {
-      await PostsService.deletePost(params.id);
+    async ({ params, user }) => {
+      await postsService.delete(params.id, user.id);
       return { success: true };
     },
     {
       auth: true,
       params: t.Object({
         id: t.Numeric({
+          minimum: 1,
+          maximum: 2_147_483_647,
+          multipleOf: 1,
           error: 'Invalid post ID',
         }),
       }),

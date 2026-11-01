@@ -26,7 +26,7 @@ import {
 import { auth } from '@frontend/lib/auth';
 import { CheckListIcon, HomeIcon, UnfoldMoreIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { Link, Outlet, useLocation, useNavigate, useRouteContext } from '@tanstack/react-router';
 
 type NavItem = {
   title: string;
@@ -67,10 +67,8 @@ export const AppLayout = () => {
 
 const AppSidebar = () => {
   const location = useLocation();
-  const { data: session } = auth.useSession();
+  const { session } = useRouteContext({ from: '/_authenticated' });
   const navigate = useNavigate();
-
-  if (!session) return null;
 
   const user = {
     name: session.user.name,
@@ -95,8 +93,8 @@ const AppSidebar = () => {
                 <HugeiconsIcon icon={HomeIcon} className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Application</span>
-                <span className="truncate text-xs">My App</span>
+                <span className="truncate font-semibold">Elysium</span>
+                <span className="truncate text-xs">Starter workspace</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

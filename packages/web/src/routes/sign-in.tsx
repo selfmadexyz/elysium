@@ -1,18 +1,26 @@
+import { getSession } from '@frontend/lib/auth-server';
+import { seo } from '@frontend/lib/seo';
 import { redirectSearchSchema } from '@frontend/lib/validations';
 import { SignIn } from '@frontend/pages/sign-in';
-import { rootRoute } from '@frontend/routes/root';
-import { createRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
-export const signInRoute = createRoute({
-  getParentRoute: () => rootRoute,
+const metadata = seo({
+  title: 'Sign in — Elysium',
+  description: 'Sign in to your Elysium account.',
   path: '/sign-in',
+});
+
+export const Route = createFileRoute('/sign-in')({
   component: SignIn,
   validateSearch: redirectSearchSchema,
-  beforeLoad: ({ context, location }) => {
-    if (context.auth.session) {
+  head: () => ({
+    meta: [...metadata.meta, { name: 'robots', content: 'noindex, nofollow' }],
+    links: [{ rel: 'canonical', href: metadata.canonical }],
+  }),
+  beforeLoad: async () => {
+    if (await getSession()) {
       throw redirect({
-        to: '/',
-        search: { redirect: location.href },
+        to: '/posts',
       });
     }
   },

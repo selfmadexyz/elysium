@@ -1,81 +1,115 @@
-name: Build and Push Docker Images
+name: Docker images
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
-  packages: write
-
-env:
-  REGISTRY: ghcr.io
 
 jobs:
-  build-backend:
+  build:
+    name: Build and smoke ${{ matrix.name }} image
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: web
+            file: packages/web/Dockerfile
+            target: runtime
+            port: 3000
+          - name: backend
+            file: packages/backend/Dockerfile
+            target: runtime
+            port: 3001
+          - name: migrate
+            file: packages/backend/Dockerfile
+            target: migrate
+            port: 0
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/metadata-action@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Require the production public origin
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
+        run: test -n "$PUBLIC_APP_URL"
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         id: meta
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/elysium-backend
+          images: ghcr.io/${{ github.repository_owner }}/elysium-${{ matrix.name }}
           tags: |
-            type=sha
+            type=sha,format=long
             type=raw,value=latest,enable={{is_default_branch}}
-
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
-          file: packages/backend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/elysium-web
-          tags: |
-            type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: packages/web/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          load: true
+          tags: elysium-${{ matrix.name }}:smoke
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
-            VITE_AUTH_URL=${{ secrets.VITE_AUTH_URL }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            VITE_SITE_URL=${{ vars.PUBLIC_APP_URL || 'http://localhost:3000' }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+      - name: Smoke the built image
+        env:
+          IMAGE: elysium-${{ matrix.name }}:smoke
+          IMAGE_KIND: ${{ matrix.name }}
+          IMAGE_PORT: ${{ matrix.port }}
+        run: bash scripts/smoke-image.sh
+      - name: Save the tested image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE: elysium-${{ matrix.name }}:smoke
+        run: docker save "$IMAGE" --output "$RUNNER_TEMP/image.tar"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: smoke-image-${{ matrix.name }}
+          path: ${{ runner.temp }}/image.tar
+          compression-level: 0
+          retention-days: 1
+
+  publish:
+    name: Publish ${{ matrix.name }} image
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [web, backend, migrate]
+    steps:
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: smoke-image-${{ matrix.name }}
+          path: ${{ runner.temp }}
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/elysium-${{ matrix.name }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest
+      - name: Publish the tested image
+        env:
+          IMAGE: elysium-${{ matrix.name }}:smoke
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          docker load --input "$RUNNER_TEMP/image.tar"
+          while IFS= read -r tag; do
+            docker tag "$IMAGE" "$tag"
+            docker push "$tag"
+          done <<< "$TAGS"

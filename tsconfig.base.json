@@ -26,7 +26,8 @@
     "baseUrl": ".",
     "paths": {
       "@frontend/*": ["./packages/web/src/*"],
-      "@backend/*": ["./packages/backend/src/*"]
+      "@backend/*": ["./packages/backend/src/*"],
+      "@elysium/contracts/*": ["./packages/contracts/src/*"]
     }
   }
 }

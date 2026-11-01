@@ -1,12 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { boolean, index, integer, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
-export const postsTable = pgTable('posts', {
-  id: integer().primaryKey().generatedByDefaultAsIdentity(),
-  title: varchar({ length: 255 }).notNull(),
-  body: text().notNull(),
-});
-
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -19,6 +13,19 @@ export const user = pgTable('user', {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+export const postsTable = pgTable(
+  'posts',
+  {
+    id: integer().primaryKey().generatedByDefaultAsIdentity(),
+    title: varchar({ length: 255 }).notNull(),
+    body: text().notNull(),
+    authorId: text('author_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [index('posts_authorId_idx').on(table.authorId)],
+);
 
 export const session = pgTable(
   'session',
@@ -82,6 +89,14 @@ export const verification = pgTable(
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  posts: many(postsTable),
+}));
+
+export const postRelations = relations(postsTable, ({ one }) => ({
+  author: one(user, {
+    fields: [postsTable.authorId],
+    references: [user.id],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

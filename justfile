@@ -1,37 +1,119 @@
-# Variables
+set shell := ["bash", "-cu"]
 
-POSTGRES_CONTAINER := "elysium-postgres"
-POSTGRES_PORT := "5434"
+POSTGRES_PORT := env_var_or_default("POSTGRES_PORT", "5434")
+POSTGRES_IMAGE := "postgres:17-alpine"
+DATABASE_URL := "postgresql://postgres:localpassword@localhost:" + POSTGRES_PORT + "/myapp"
+TEST_POSTGRES_CONTAINER := "elysium-postgres-test"
+TEST_POSTGRES_PORT := env_var_or_default("TEST_POSTGRES_PORT", "55434")
+TEST_DATABASE_URL := "postgresql://postgres:localpassword@localhost:" + TEST_POSTGRES_PORT + "/elysium_test"
 
-# Start services (PostgreSQL, install, migrate, dev)
-start:
-    #!/bin/bash
-    set -e
+default:
+    @just --list
 
-    # Start PostgreSQL if not running
-    if docker ps -q -f name={{ POSTGRES_CONTAINER }} | grep -q .; then
-        echo "PostgreSQL already running"
-    elif docker ps -a -q -f name={{ POSTGRES_CONTAINER }} | grep -q .; then
-        docker start {{ POSTGRES_CONTAINER }}
-        echo "PostgreSQL started"
-    else
-        docker run --name {{ POSTGRES_CONTAINER }} \
-            -e POSTGRES_USER=postgres \
-            -e POSTGRES_PASSWORD=localpassword \
-            -e POSTGRES_DB=myapp \
-            -d -p {{ POSTGRES_PORT }}:5432 postgres:15
-        echo "PostgreSQL container created and started"
-    fi
+# Install exactly what is recorded in bun.lock.
+install:
+    bun install --frozen-lockfile
 
-    bun install
-    cd packages/backend && bun run db:migrate
+# Start the unified TanStack Start server after preparing PostgreSQL.
+dev:
+    just postgres-start
+    just migrate
     bun run dev
 
-# Stop services
-stop:
-    docker stop {{ POSTGRES_CONTAINER }} 2>/dev/null || true
+# Backwards-compatible alias used by the existing setup instructions.
+start: dev
 
-# Remove PostgreSQL container completely
-reset-db:
-    docker stop {{ POSTGRES_CONTAINER }} 2>/dev/null || true
-    docker rm {{ POSTGRES_CONTAINER }} 2>/dev/null || true
+dev-web:
+    bun run dev:web
+
+dev-backend:
+    bun run dev:backend
+
+lint:
+    bun run lint
+
+test:
+    bun run test
+
+# Run database integration tests against an isolated, ephemeral PostgreSQL container.
+test-integration:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    created=0
+    cleanup() {
+        if [[ "$created" == "1" ]]; then
+            docker stop {{ TEST_POSTGRES_CONTAINER }} >/dev/null 2>&1 || true
+        fi
+    }
+    trap cleanup EXIT
+
+    docker run --rm --name {{ TEST_POSTGRES_CONTAINER }} \
+        --env POSTGRES_USER=postgres \
+        --env POSTGRES_PASSWORD=localpassword \
+        --env POSTGRES_DB=elysium_test \
+        --detach \
+        --publish "127.0.0.1:{{ TEST_POSTGRES_PORT }}:5432" \
+        {{ POSTGRES_IMAGE }} >/dev/null
+    created=1
+
+    ready=0
+    for attempt in {1..30}; do
+        if docker exec {{ TEST_POSTGRES_CONTAINER }} pg_isready --host 127.0.0.1 --username postgres --dbname elysium_test >/dev/null 2>&1; then
+            ready=1
+            break
+        fi
+        sleep 1
+    done
+    if [[ "$ready" != "1" ]]; then
+        echo "Test PostgreSQL did not become ready in time" >&2
+        docker logs {{ TEST_POSTGRES_CONTAINER }} >&2 || true
+        exit 1
+    fi
+
+    DATABASE_URL="{{ TEST_DATABASE_URL }}" bun run db:migrate
+    DATABASE_URL="{{ TEST_DATABASE_URL }}" RUN_DATABASE_TESTS=1 bun run --cwd packages/backend test
+
+build:
+    bun run build
+
+check:
+    bun run lint
+    bun run test
+    bun run build
+
+postgres-start:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if docker ps --filter 'name=^/elysium-postgres$' --filter status=running --quiet | grep -q .; then
+        echo "Legacy PostgreSQL is running. Stop it with 'docker stop elysium-postgres', then rerun. Compose reuses elysium-postgres-data; see docs/troubleshooting.md." >&2
+        exit 1
+    fi
+    POSTGRES_PORT="{{ POSTGRES_PORT }}" docker compose up --detach --wait postgres
+
+postgres-stop:
+    POSTGRES_PORT="{{ POSTGRES_PORT }}" docker compose stop postgres
+
+stop: postgres-stop
+
+postgres-remove:
+    POSTGRES_PORT="{{ POSTGRES_PORT }}" docker compose down --volumes --remove-orphans
+
+reset-db: postgres-remove
+
+postgres-url:
+    @echo "{{ DATABASE_URL }}"
+
+migrate:
+    DATABASE_URL="{{ DATABASE_URL }}" bun run db:migrate
+
+generate-migration:
+    DATABASE_URL="{{ DATABASE_URL }}" bun run db:generate
+
+# Build the one-shot release image, then run it with the deployment environment.
+migration-image tag="elysium-migrate:local":
+    docker build --file packages/backend/Dockerfile --target migrate --tag {{ tag }} .
+
+run-migration-image tag="elysium-migrate:local":
+    just postgres-start
+    MIGRATION_IMAGE="{{ tag }}" POSTGRES_PORT="{{ POSTGRES_PORT }}" docker compose run --rm migrate

@@ -2,12 +2,8 @@ export class ServerError extends Error {
   public readonly status: number;
 
   constructor(status: number, message: string, cause?: unknown) {
-    // Auto re-throw if already a ServerError (keep the original message)
-    if (cause instanceof ServerError) {
-      throw cause;
-    }
-
     super(message, { cause });
+    this.name = new.target.name;
     this.status = status;
   }
 }

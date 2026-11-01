@@ -1,20 +1,15 @@
-import { table } from '@backend/database/schema';
-import { createInsertSchema, createSelectSchema } from 'drizzle-typebox';
+import { CreatePostRequestSchema, PostResponseSchema, UpdatePostRequestSchema } from '@elysium/contracts/posts';
 import { Elysia, t } from 'elysia';
 
-const insertPostSchema = createInsertSchema(table.postsTable);
-const selectPostSchema = createSelectSchema(table.postsTable);
-
-export const createPostRequest = t.Omit(insertPostSchema, ['id']);
-export const updatePostRequest = t.Partial(t.Omit(insertPostSchema, ['id']));
-export const postResponse = selectPostSchema;
-
-export const PostModel = new Elysia({ name: 'Post.Model' }).model({
-  post: postResponse,
-  'post.create': createPostRequest,
-  'post.update': updatePostRequest,
+export const listPostsQuery = t.Object({
+  limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, multipleOf: 1 })),
+  offset: t.Optional(t.Numeric({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER, multipleOf: 1 })),
 });
 
-export type CreatePostRequest = typeof createPostRequest.static;
-export type UpdatePostRequest = typeof updatePostRequest.static;
-export type PostResponse = typeof postResponse.static;
+export const PostModel = new Elysia({ name: 'Post.Model' }).model({
+  post: PostResponseSchema,
+  'post.create': CreatePostRequestSchema,
+  'post.update': UpdatePostRequestSchema,
+});
+
+export type ListPostsQuery = typeof listPostsQuery.static;
