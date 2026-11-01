@@ -37,7 +37,7 @@ The `/api/$` TanStack Start server route imports the Elysia app and passes it th
 - request and response validation;
 - business and persistence services;
 - database access and transactions;
-- API errors, request limits, health, and optional development Swagger.
+- API errors, request limits, health, and optional development OpenAPI documentation.
 
 ### PostgreSQL owns
 

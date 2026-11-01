@@ -31,7 +31,7 @@ Through TanStack Start:
 - Better Auth: <http://localhost:3000/api/auth>
 - Posts example: <http://localhost:3000/api/posts>
 
-Through the standalone server, replace port 3000 with 3001. Swagger is exposed at `/api/swagger` when `NODE_ENV` is not `production`.
+Through the standalone server, replace port 3000 with 3001. Development OpenAPI documentation is exposed at `/api/swagger` when `NODE_ENV` is not `production`.
 
 ## Environment
 
@@ -53,7 +53,7 @@ Production `APP_URL` and `BETTER_AUTH_URL` values must use HTTPS unless they tar
 | Command | Purpose |
 | --- | --- |
 | `bun run dev` | Run standalone Elysia in watch mode |
-| `bun run start` | Apply migrations, then run standalone Elysia |
+| `bun run start` | Run standalone Elysia after the release migration job |
 | `bun run test` | Run backend tests with the shared preload |
 | `bun run lint` | Run TypeScript and Biome checks |
 | `bun run format` | Apply Biome formatting, including unsafe fixes |

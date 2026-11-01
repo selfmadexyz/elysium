@@ -49,6 +49,8 @@ Inspect the service logs when its health check fails:
 docker compose logs postgres
 ```
 
+Compose keeps the existing named volume `elysium-postgres-data`. If the old manually managed `elysium-postgres` container is running, `just postgres-start` stops with a migration message instead of opening a new empty database. Back up the old database, stop the legacy container with `docker stop elysium-postgres`, and rerun `just postgres-start`; Compose attaches the same volume. Keep the stopped container until the data is verified. Do not attach PostgreSQL 15 data directly to PostgreSQL 17: use a dump/restore or an explicit PostgreSQL upgrade plan for a major-version change.
+
 `just postgres-start` waits for the Compose health check. If an old local database is incompatible and its data is disposable:
 
 ```bash
@@ -94,15 +96,15 @@ http://localhost:3000/api/auth/callback/google
 
 `VITE_SITE_URL` is build-time configuration. Set it to the public HTTPS origin before `bun run build` or the container build, then rebuild the web artifact.
 
-## Swagger returns 404
+## API documentation returns 404
 
-Swagger is available when `NODE_ENV` is not `production`:
+OpenAPI documentation is available when `NODE_ENV` is not `production`:
 
 ```text
 http://localhost:3000/api/swagger
 ```
 
-The standalone equivalent is <http://localhost:3001/api/swagger>. Swagger is intentionally absent in production.
+The standalone equivalent is <http://localhost:3001/api/swagger>. OpenAPI documentation is intentionally absent in production.
 
 ## Migrations fail
 

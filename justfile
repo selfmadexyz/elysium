@@ -1,6 +1,7 @@
 set shell := ["bash", "-cu"]
 
-POSTGRES_PORT := "5434"
+POSTGRES_PORT := env_var_or_default("POSTGRES_PORT", "5434")
+POSTGRES_IMAGE := "postgres:17-alpine"
 DATABASE_URL := "postgresql://postgres:localpassword@localhost:" + POSTGRES_PORT + "/myapp"
 TEST_POSTGRES_CONTAINER := "elysium-postgres-test"
 TEST_POSTGRES_PORT := env_var_or_default("TEST_POSTGRES_PORT", "55434")
@@ -58,7 +59,7 @@ test-integration:
 
     ready=0
     for attempt in {1..30}; do
-        if docker exec {{ TEST_POSTGRES_CONTAINER }} pg_isready --username postgres --dbname elysium_test >/dev/null 2>&1; then
+        if docker exec {{ TEST_POSTGRES_CONTAINER }} pg_isready --host 127.0.0.1 --username postgres --dbname elysium_test >/dev/null 2>&1; then
             ready=1
             break
         fi
@@ -66,6 +67,7 @@ test-integration:
     done
     if [[ "$ready" != "1" ]]; then
         echo "Test PostgreSQL did not become ready in time" >&2
+        docker logs {{ TEST_POSTGRES_CONTAINER }} >&2 || true
         exit 1
     fi
 
@@ -81,6 +83,12 @@ check:
     bun run build
 
 postgres-start:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if docker ps --filter 'name=^/elysium-postgres$' --filter status=running --quiet | grep -q .; then
+        echo "Legacy PostgreSQL is running. Stop it with 'docker stop elysium-postgres', then rerun. Compose reuses elysium-postgres-data; see docs/troubleshooting.md." >&2
+        exit 1
+    fi
     POSTGRES_PORT="{{ POSTGRES_PORT }}" docker compose up --detach --wait postgres
 
 postgres-stop:
@@ -107,4 +115,5 @@ migration-image tag="elysium-migrate:local":
     docker build --file packages/backend/Dockerfile --target migrate --tag {{ tag }} .
 
 run-migration-image tag="elysium-migrate:local":
-    docker run --rm --env-file packages/backend/.env {{ tag }}
+    just postgres-start
+    MIGRATION_IMAGE="{{ tag }}" POSTGRES_PORT="{{ POSTGRES_PORT }}" docker compose run --rm migrate

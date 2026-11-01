@@ -8,7 +8,16 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [
     tailwindcss(),
-    tanstackStart({ srcDirectory: 'src' }),
+    tanstackStart({
+      srcDirectory: 'src',
+      prerender: {
+        enabled: true,
+        autoStaticPathsDiscovery: false,
+        crawlLinks: false,
+        failOnError: true,
+      },
+      pages: [{ path: '/' }, { path: '/get-started' }],
+    }),
     viteReact(),
     nitro({
       ...(process.env.VERCEL ? {} : { preset: 'bun' }),

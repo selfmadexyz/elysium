@@ -1,4 +1,4 @@
-ARG BUN_VERSION=1.4.2
+ARG BUN_VERSION=1.4.4
 
 # ---- Dependencies ----
 FROM oven/bun:${BUN_VERSION} AS dependencies
@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/web/package.json ./packages/web/
 COPY packages/backend/package.json ./packages/backend/
+COPY packages/contracts/package.json ./packages/contracts/
 RUN bun install --frozen-lockfile --ignore-scripts
 
 # ---- Build the TanStack Start/Nitro server ----

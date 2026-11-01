@@ -8,6 +8,7 @@ const metadata = seo({
 });
 
 export const Route = createFileRoute('/')({
+  ssr: true,
   head: () => ({
     meta: metadata.meta,
     links: [{ rel: 'canonical', href: metadata.canonical }],

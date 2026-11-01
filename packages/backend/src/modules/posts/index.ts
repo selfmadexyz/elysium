@@ -21,11 +21,12 @@ export const posts = new Elysia({
       auth: true,
       query: listPostsQuery,
       detail: {
-        description: 'Get all posts',
-        summary: 'List all posts',
+        description: 'Get a page of your posts, newest first',
+        summary: 'List your posts',
       },
       response: {
         200: t.Array(t.Ref('post')),
+        400: 'error',
         401: 'error',
         500: 'error',
       },
@@ -40,6 +41,9 @@ export const posts = new Elysia({
       auth: true,
       params: t.Object({
         id: t.Numeric({
+          minimum: 1,
+          maximum: 2_147_483_647,
+          multipleOf: 1,
           error: 'Invalid post ID',
         }),
       }),
@@ -83,6 +87,9 @@ export const posts = new Elysia({
       auth: true,
       params: t.Object({
         id: t.Numeric({
+          minimum: 1,
+          maximum: 2_147_483_647,
+          multipleOf: 1,
           error: 'Invalid post ID',
         }),
       }),
@@ -109,6 +116,9 @@ export const posts = new Elysia({
       auth: true,
       params: t.Object({
         id: t.Numeric({
+          minimum: 1,
+          maximum: 2_147_483_647,
+          multipleOf: 1,
           error: 'Invalid post ID',
         }),
       }),

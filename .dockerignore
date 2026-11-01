@@ -1,5 +1,9 @@
 node_modules
 .output
+.nitro
+**/.nitro
+playwright-report
+test-results
 **/dist
 coverage
 .git

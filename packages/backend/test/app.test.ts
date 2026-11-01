@@ -42,6 +42,15 @@ describe('backend app', () => {
     expect(exitCode).toBe(0);
     const responses = JSON.parse(stdout);
     const isProduction = nodeEnv === 'production';
+    expect(responses.documentation.status).toBe(isProduction ? 404 : 200);
+    if (isProduction) {
+      expect(responses.documentation.openapi).toBeUndefined();
+    } else {
+      expect(responses.documentation.contentType).toContain('application/json');
+      expect(responses.documentation.openapi).toMatch(/^3\./);
+      expect(responses.documentation.title).toBe('Starter API');
+      expect(responses.documentation.paths).toContain('/api/posts/');
+    }
     for (const [name, status, error] of [
       ['unexpected', 500, 'Internal Server Error'],
       ['internal', 500, 'InternalServerError'],

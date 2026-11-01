@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getRequestHeaders } from '@tanstack/react-start/server';
+import { getRequestHeaders, getResponseHeaders } from '@tanstack/react-start/server';
 
 export const getSession = createServerFn({ method: 'GET' }).handler(async () => {
   const [{ auth }, headers] = await Promise.all([
@@ -7,5 +7,10 @@ export const getSession = createServerFn({ method: 'GET' }).handler(async () => 
     Promise.resolve(getRequestHeaders()),
   ]);
 
-  return auth.api.getSession({ headers });
+  const { response, headers: sessionHeaders } = await auth.api.getSession({ headers, returnHeaders: true });
+  for (const cookie of sessionHeaders.getSetCookie()) {
+    getResponseHeaders().append('set-cookie', cookie);
+  }
+
+  return response;
 });

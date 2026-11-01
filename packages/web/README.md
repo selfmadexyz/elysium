@@ -1,6 +1,6 @@
 # Elysium web
 
-The web package is a TanStack Start application running on React 19 and Bun. It renders public pages on the server, defines route-specific metadata, hydrates TanStack Query, and exposes the Elysia application through same-origin `/api/*` handlers.
+The web package is a TanStack Start application running on React 19 and Bun. It pre-renders its public landing/setup pages, defines route-specific metadata, supports client-rendered application routes, and exposes Elysia through same-origin `/api/*` handlers. See [rendering choices](../../docs/rendering.md) for static pages, optional SSR and SPA mode.
 
 ## Run locally
 
@@ -25,19 +25,19 @@ VITE_SITE_URL=http://localhost:3000
 | Command | Purpose |
 | --- | --- |
 | `bun run dev` | Start TanStack Start on port 3000 |
-| `bun run build` | Build the Nitro Bun server and type-check the package |
+| `bun run build` | Build under Bun, pre-render the public page allowlist, and type-check the package |
 | `bun run start` | Run the built `.output/server/index.mjs` server |
 | `bun run preview` | Preview the Vite build |
-| `bun run test` | Run Vitest; currently passes when no web tests exist |
+| `bun run test` | Run the redirect-validation and SEO helper tests with Vitest |
 | `bun run lint` | Run TypeScript and Biome checks |
 | `bun run format` | Apply Biome formatting, including unsafe fixes |
 
 ## Request boundaries
 
 - `src/routes/__root.tsx` owns the HTML document, default SEO, theme, and error boundaries.
-- Public routes render on the server and can define canonical and social metadata.
+- `/` and `/get-started` generate static HTML during the build, including canonical and social metadata. Route discovery and crawling are disabled for this allowlist.
 - `src/routes/api.$.ts` forwards same-origin API methods to the import-safe Elysia app.
-- `src/lib/auth-server.ts` resolves sessions in server route guards.
+- `src/lib/auth-server.ts` resolves sessions in server route guards and forwards refreshed session cookies to the browser.
 - Protected routes resolve the session before rendering; the posts UI remains client-rendered.
 - `robots.txt` and `sitemap.xml` are server routes.
 
@@ -58,6 +58,7 @@ VITE_SITE_URL=http://localhost:3000
 - Pass the backend secrets and database URL to the web runtime, not to the client build.
 - The web image runs as the non-root `bun` user on port 3000.
 - The current Open Graph image is the project logo; replace it with a dedicated social card.
-- Add web component and browser end-to-end tests before treating the starter as a release baseline.
+- From the repository root, `bun run test:e2e` checks generated public HTML, metadata without JavaScript, hydration, auth guards, real session renewal and paginated CRUD. Build first, install Chromium and set `E2E_DATABASE_URL` to a migrated disposable `elysium_test` or `elysium_e2e` database. Fixtures reject other database names.
+- Browser coverage uses dummy email/password users and does not exercise a real Google OAuth exchange.
 
 See [Deployment](../../docs/deployment.md) and the [production checklist](../../docs/production-checklist.md).

@@ -3,7 +3,7 @@ import { db } from '@backend/lib/db';
 import { InternalServerError, NotFoundError } from '@backend/lib/errors';
 import type { ListPostsQuery } from '@backend/modules/posts/model';
 import type { CreatePostRequest, PostResponse, UpdatePostRequest } from '@elysium/contracts/posts';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 export const postsService = {
   async list(authorId: string, pagination: ListPostsQuery = {}): Promise<PostResponse[]> {
@@ -11,6 +11,7 @@ export const postsService = {
       .select()
       .from(table.postsTable)
       .where(eq(table.postsTable.authorId, authorId))
+      .orderBy(desc(table.postsTable.id))
       .limit(pagination.limit ?? 20)
       .offset(pagination.offset ?? 0);
   },

@@ -5,8 +5,8 @@ export const createPostRequest = CreatePostRequestSchema;
 export const updatePostRequest = UpdatePostRequestSchema;
 export const postResponse = PostResponseSchema;
 export const listPostsQuery = t.Object({
-  limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100 })),
-  offset: t.Optional(t.Numeric({ minimum: 0, maximum: 10_000 })),
+  limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, multipleOf: 1 })),
+  offset: t.Optional(t.Numeric({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER, multipleOf: 1 })),
 });
 
 export const PostModel = new Elysia({ name: 'Post.Model' }).model({

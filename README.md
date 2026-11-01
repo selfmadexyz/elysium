@@ -9,7 +9,7 @@ It is designed for dashboards, internal tools, and SaaS applications that need S
 
 ## What is included
 
-- Bun 1.4.2 workspaces and TypeScript strict mode
+- Bun 1.4.4 workspaces and TypeScript strict mode
 - TanStack Start with React 19, SSR, file-based routing, and route metadata
 - TanStack Query and TanStack Form
 - Elysia mounted under the same-origin `/api/*` route
@@ -38,7 +38,7 @@ Read [Architecture](docs/architecture.md) for ownership rules, request flows, an
 
 ## Prerequisites
 
-- [Bun 1.4.2](https://bun.sh/)
+- [Bun 1.4.4](https://bun.sh/)
 - [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2 and the daemon running
 - [just](https://github.com/casey/just)
 - OpenSSL for generating the local auth secret
@@ -106,7 +106,7 @@ Open <http://localhost:3000>. Verify the same-origin API:
 curl --fail http://localhost:3000/api/health
 ```
 
-Swagger is available at <http://localhost:3000/api/swagger> outside production. Run `just dev-backend` separately only when you need the standalone Elysia server on port 3001.
+OpenAPI documentation is available at <http://localhost:3000/api/swagger> outside production. Run `just dev-backend` separately only when you need the standalone Elysia server on port 3001.
 
 ### 4. Stop or reset PostgreSQL
 
@@ -137,7 +137,7 @@ Run `just` to list the available recipes.
 | `just stop` | Stop local PostgreSQL |
 | `just reset-db` | Remove local PostgreSQL and its named volume |
 | `just migration-image` | Build the one-shot migration image |
-| `just run-migration-image` | Run the migration image with the backend env file |
+| `just run-migration-image` | Run the migration image against local Compose PostgreSQL |
 
 Equivalent root package scripts include `bun run dev`, `build`, `typecheck`, `lint`, `test`, `db:migrate`, `db:generate`, and `audit`.
 

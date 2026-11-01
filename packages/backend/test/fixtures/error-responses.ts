@@ -45,4 +45,24 @@ const responses = Object.fromEntries(
   ),
 );
 
-console.log(JSON.stringify(responses));
+const documentation = await app.handle(new Request('http://localhost/api/swagger/json'));
+const specification =
+  documentation.status === 200
+    ? ((await documentation.json()) as {
+        openapi?: string;
+        info?: { title?: string };
+        paths?: Record<string, unknown>;
+      })
+    : undefined;
+console.log(
+  JSON.stringify({
+    ...responses,
+    documentation: {
+      status: documentation.status,
+      contentType: documentation.headers.get('content-type'),
+      openapi: specification?.openapi,
+      title: specification?.info?.title,
+      paths: Object.keys(specification?.paths ?? {}),
+    },
+  }),
+);

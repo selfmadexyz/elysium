@@ -18,9 +18,10 @@ import { useForm } from '@tanstack/react-form';
 type CreatePostDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: () => void;
 };
 
-export function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) {
+export function CreatePostDialog({ open, onOpenChange, onCreated }: CreatePostDialogProps) {
   const createPost = useCreatePost();
 
   const form = useForm({
@@ -33,6 +34,7 @@ export function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) 
     },
     onSubmit: async ({ value }) => {
       await createPost.mutateAsync(value);
+      onCreated?.();
       onOpenChange(false);
       form.reset();
     },

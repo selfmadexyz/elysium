@@ -1,80 +1,84 @@
-name: CI and container images
+name: Docker images
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
-env:
-  BUN_VERSION: 1.4.2
-  REGISTRY: ghcr.io
-
 jobs:
-  verify:
-    name: Lint, test, and build
+  build:
+    name: Build and smoke ${{ matrix.name }} image
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: localpassword
-          POSTGRES_DB: elysium_test
-        ports:
-          - 5434:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d elysium_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      APP_URL: http://localhost:3000
-      BETTER_AUTH_SECRET: ci-only-secret-at-least-32-characters-long
-      BETTER_AUTH_URL: http://localhost:3000
-      DATABASE_URL: postgresql://postgres:localpassword@localhost:5434/elysium_test
-      GOOGLE_CLIENT_ID: ci-google-client-id
-      GOOGLE_CLIENT_SECRET: ci-google-client-secret
-      NODE_ENV: test
-      RUN_DATABASE_TESTS: '1'
-      VITE_SITE_URL: http://localhost:3000
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: web
+            file: packages/web/Dockerfile
+            target: runtime
+            port: 3000
+          - name: backend
+            file: packages/backend/Dockerfile
+            target: runtime
+            port: 3001
+          - name: migrate
+            file: packages/backend/Dockerfile
+            target: migrate
+            port: 0
     steps:
-      - name: Check out repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Audit dependencies
-        run: bun run audit
-
-      - name: Apply database migrations
-        run: bun run db:migrate
-
-      - name: Lint and typecheck
-        run: bun run lint
-
-      - name: Test
-        run: bun run test
-
-      - name: Build
-        run: bun run build
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Require the production public origin
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          NODE_ENV: production
+          PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
+        run: test -n "$PUBLIC_APP_URL"
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/elysium-${{ matrix.name }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          load: true
+          tags: elysium-${{ matrix.name }}:smoke
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_SITE_URL=${{ vars.PUBLIC_APP_URL || 'http://localhost:3000' }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+      - name: Smoke the built image
+        env:
+          IMAGE: elysium-${{ matrix.name }}:smoke
+          IMAGE_KIND: ${{ matrix.name }}
+          IMAGE_PORT: ${{ matrix.port }}
+        run: bash scripts/smoke-image.sh
+      - name: Save the tested image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE: elysium-${{ matrix.name }}:smoke
+        run: docker save "$IMAGE" --output "$RUNNER_TEMP/image.tar"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: smoke-image-${{ matrix.name }}
+          path: ${{ runner.temp }}/image.tar
+          compression-level: 0
+          retention-days: 1
 
-  containers:
-    name: Build ${{ matrix.name }} image
-    needs: verify
+  publish:
+    name: Publish ${{ matrix.name }} image
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
@@ -84,57 +88,37 @@ jobs:
         include:
           - name: web
             file: packages/web/Dockerfile
-            image: elysium-web
             target: runtime
           - name: backend
             file: packages/backend/Dockerfile
-            image: elysium-backend
             target: runtime
-          - name: migrations
+          - name: migrate
             file: packages/backend/Dockerfile
-            image: elysium-migrate
             target: migrate
     steps:
-      - name: Check out repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
-      - name: Require the public production origin
-        if: github.event_name == 'push'
-        env:
-          PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
-        run: test -n "$PUBLIC_APP_URL"
-
-      - name: Log in to GHCR
-        if: github.event_name == 'push'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
-          registry: ${{ env.REGISTRY }}
+          name: smoke-image-${{ matrix.name }}
+          path: ${{ runner.temp }}
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract image metadata
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          images: ghcr.io/${{ github.repository_owner }}/elysium-${{ matrix.name }}
           tags: |
-            type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and optionally publish
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
-        with:
-          context: .
-          file: ${{ matrix.file }}
-          target: ${{ matrix.target }}
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUN_VERSION=${{ env.BUN_VERSION }}
-            VITE_SITE_URL=${{ vars.PUBLIC_APP_URL || 'http://localhost:3000' }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+            type=sha,format=long
+            type=raw,value=latest
+      - name: Publish the tested image
+        env:
+          IMAGE: elysium-${{ matrix.name }}:smoke
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          docker load --input "$RUNNER_TEMP/image.tar"
+          while IFS= read -r tag; do
+            docker tag "$IMAGE" "$tag"
+            docker push "$tag"
+          done <<< "$TAGS"

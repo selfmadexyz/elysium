@@ -1,4 +1,4 @@
-ARG BUN_VERSION=1.4.2
+ARG BUN_VERSION=1.4.4
 
 # ---- Dependencies ----
 FROM oven/bun:${BUN_VERSION} AS dependencies
@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/web/package.json ./packages/web/
+COPY packages/contracts/package.json ./packages/contracts/
 RUN bun install --frozen-lockfile --ignore-scripts
 
 # ---- Build ----
@@ -15,6 +16,7 @@ WORKDIR /app
 
 COPY tsconfig.base.json ./
 COPY packages/backend ./packages/backend
+COPY packages/contracts ./packages/contracts
 RUN bun install --frozen-lockfile --ignore-scripts
 
 ENV NODE_ENV=production
@@ -34,6 +36,7 @@ WORKDIR /app
 
 COPY tsconfig.base.json ./
 COPY packages/backend ./packages/backend
+COPY packages/contracts ./packages/contracts
 RUN bun install --frozen-lockfile --ignore-scripts
 
 ENV NODE_ENV=production

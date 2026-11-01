@@ -4,7 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 
 const stack = [
   { icon: Zap, label: 'Bun', detail: 'runtime & workspaces' },
-  { icon: Layout, label: 'TanStack Start', detail: 'SSR & routing' },
+  { icon: Layout, label: 'TanStack Start', detail: 'flexible rendering & routing' },
   { icon: Server, label: 'Elysia', detail: 'typed API' },
   { icon: Database, label: 'PostgreSQL', detail: 'database' },
   { icon: Shield, label: 'Better Auth', detail: 'authentication' },
@@ -12,7 +12,7 @@ const stack = [
 ];
 
 const features = [
-  'Server-rendered public pages with route-level SEO metadata',
+  'Pre-rendered public pages with route-level SEO metadata and a client-rendered private app',
   'One same-origin deployment for the UI, API, and authentication',
   'Typed API client shared from Elysia to React',
   'Database-backed sessions and ownership-scoped example CRUD',
@@ -31,8 +31,8 @@ export default function GetStarted() {
               Ship the first feature, not the setup
             </h1>
             <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
-              A focused Bun starter for products that need server rendering, a typed API, authentication, and PostgreSQL
-              from day one.
+              A focused Bun starter with a typed API, authentication, and PostgreSQL. Choose static pages, client
+              rendering, or server rendering for each part of your product.
             </p>
             <a
               href="https://github.com/selfmadexyz/elysium"

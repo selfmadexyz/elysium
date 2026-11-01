@@ -4,13 +4,13 @@ The recommended production shape is the TanStack Start web image serving pages a
 
 ## Published images
 
-CI builds three container targets after lint, tests, and builds pass:
+CI builds and smokes three container targets after lint, types, audit, PostgreSQL tests, web tests/builds and browser tests pass:
 
 - `elysium-web`: TanStack Start/Nitro server on port 3000;
 - `elysium-backend`: optional standalone Elysia binary on port 3001;
 - `elysium-migrate`: one-shot Drizzle migration runner.
 
-Images are pushed to GHCR for `main` pushes. The repository variable `PUBLIC_APP_URL` is required for production image publication and is passed to the web build as `VITE_SITE_URL`.
+After all three container smoke tests pass, the exact tested image archives are published to GHCR for `main` pushes. The repository variable `PUBLIC_APP_URL` is required for production image publication and is passed to the web build as `VITE_SITE_URL`.
 
 ## Web build configuration
 
@@ -34,6 +34,8 @@ Before applying it to a database with existing posts:
 4. rerun the committed migration, which adds the foreign key, index, and `NOT NULL` constraint.
 
 The starter migration runs directly on a fresh or empty starter database. Define a product-specific mapping before using it on real data.
+
+Treat the ownership rollout as forward-only unless a rollback has been reviewed with the data owner. The old application cannot insert posts after `author_id` becomes required, and restoring its shared-post authorization would expose data across users. Prefer a compatible forward fix; otherwise restore a verified backup or apply a reviewed inverse migration together with compatible application code.
 
 ## Web runtime configuration
 
@@ -77,7 +79,9 @@ just migration-image
 just run-migration-image
 ```
 
-The second command reads `packages/backend/.env`. Review it before running the image against any database.
+The second command starts the local Compose PostgreSQL service and runs the migration image on the same network. Its database URL uses the service hostname `postgres`, not container-local `localhost`. It targets the local `myapp` database and does not read production credentials. Set `POSTGRES_PORT=<port>` to change the published host port.
+
+For a managed production database, run the image separately with the reviewed deployment environment, for example `docker run --rm --env-file /secure/path/production.env elysium-migrate:<release>`. The URL in that file must be reachable from the container.
 
 ## Optional standalone API
 
@@ -89,7 +93,7 @@ BETTER_AUTH_URL=https://app.example.com
 APP_URL=https://app.example.com
 ```
 
-Swagger is disabled automatically when `NODE_ENV=production`.
+Development OpenAPI documentation is disabled automatically when `NODE_ENV=production`.
 
 ## Platform requirements
 

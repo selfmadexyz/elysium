@@ -15,10 +15,10 @@ import { Elysia } from 'elysia';
 const documentation = new Elysia({ name: 'documentation' });
 
 if (env.NODE_ENV !== 'production') {
-  const { default: swagger } = await import('@elysiajs/swagger');
+  const { openapi } = await import('@elysiajs/openapi');
 
   documentation.use(
-    swagger({
+    openapi({
       path: '/api/swagger',
       specPath: '/api/swagger/json',
       documentation: {

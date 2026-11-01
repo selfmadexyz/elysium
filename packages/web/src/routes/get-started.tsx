@@ -9,6 +9,7 @@ const metadata = seo({
 });
 
 export const Route = createFileRoute('/get-started')({
+  ssr: true,
   head: () => ({ meta: metadata.meta, links: [{ rel: 'canonical', href: metadata.canonical }] }),
   component: GetStarted,
 });

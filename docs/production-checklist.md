@@ -31,7 +31,7 @@ Elysium supplies integration examples, not a production guarantee. Treat this ch
 
 - [ ] Restrict CORS to known origins or remove cross-origin browser access.
 - [ ] Review the included security headers and add a Content Security Policy appropriate for the application.
-- [ ] Restrict or disable Swagger in production.
+- [ ] Restrict or disable API documentation in production.
 - [ ] Review request-size limits, file handling, error disclosure, and log redaction.
 - [ ] Run dependency, secret, and container image scans in CI.
 - [ ] Publish a vulnerability reporting process.
