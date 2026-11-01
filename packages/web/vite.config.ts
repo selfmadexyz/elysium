@@ -1,4 +1,3 @@
-import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
@@ -71,9 +70,6 @@ export default defineConfig({
   ],
   resolve: {
     tsconfigPaths: true,
-    alias: {
-      '@frontend': fileURLToPath(new URL('./src', import.meta.url)),
-    },
   },
   ssr: {
     noExternal: ['@noble/ciphers'],

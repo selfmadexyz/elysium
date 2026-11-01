@@ -17,7 +17,6 @@ WORKDIR /app
 COPY tsconfig.base.json ./
 COPY packages/backend ./packages/backend
 COPY packages/contracts ./packages/contracts
-RUN bun install --frozen-lockfile --ignore-scripts
 
 ENV NODE_ENV=production
 
@@ -37,7 +36,6 @@ WORKDIR /app
 COPY tsconfig.base.json ./
 COPY packages/backend ./packages/backend
 COPY packages/contracts ./packages/contracts
-RUN bun install --frozen-lockfile --ignore-scripts
 
 ENV NODE_ENV=production
 WORKDIR /app/packages/backend

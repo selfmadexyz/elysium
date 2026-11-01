@@ -85,16 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: web
-            file: packages/web/Dockerfile
-            target: runtime
-          - name: backend
-            file: packages/backend/Dockerfile
-            target: runtime
-          - name: migrate
-            file: packages/backend/Dockerfile
-            target: migrate
+        name: [web, backend, migrate]
     steps:
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:

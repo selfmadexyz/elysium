@@ -13,7 +13,6 @@ RUN bun install --frozen-lockfile --ignore-scripts
 # ---- Build the TanStack Start/Nitro server ----
 FROM dependencies AS build
 COPY . .
-RUN bun install --frozen-lockfile --ignore-scripts
 
 ARG VITE_SITE_URL=http://localhost:3000
 ENV NODE_ENV=production
