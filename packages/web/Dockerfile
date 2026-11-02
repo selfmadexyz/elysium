@@ -1,6 +1,5 @@
 ARG BUN_VERSION=1.4.4
 
-# ---- Dependencies ----
 FROM oven/bun:${BUN_VERSION} AS dependencies
 WORKDIR /app
 
@@ -10,7 +9,14 @@ COPY packages/backend/package.json ./packages/backend/
 COPY packages/contracts/package.json ./packages/contracts/
 RUN bun install --frozen-lockfile --ignore-scripts
 
-# ---- Build the TanStack Start/Nitro server ----
+FROM dependencies AS migrate
+COPY tsconfig.json ./
+COPY packages/backend ./packages/backend
+COPY packages/contracts ./packages/contracts
+ENV NODE_ENV=production
+WORKDIR /app/packages/backend
+CMD ["bun", "run", "db:migrate"]
+
 FROM dependencies AS build
 COPY . .
 
@@ -20,7 +26,6 @@ ENV VITE_SITE_URL=${VITE_SITE_URL}
 
 RUN bun run build:web
 
-# ---- Runtime ----
 FROM oven/bun:${BUN_VERSION} AS runtime
 WORKDIR /app
 

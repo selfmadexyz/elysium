@@ -31,7 +31,7 @@ The pre-push hook runs the repo's local checks. It must be installed for each cl
 
 ## CI and image publication
 
-The `CI` workflow runs `lint` (Biome, added comments, types and harness tests), `audit`, `test-backend` (fresh PostgreSQL migrations and real ownership integration tests with `RUN_DATABASE_TESTS=1`), `test-web` (Vitest and Nitro build), and `test-e2e` (Chromium smoke tests). The `images` job depends on all five. Its reusable workflow builds and smokes the web, optional backend and one-shot migration images. Publication waits for every image smoke test, then uploads the exact saved/tested images only on pushes to `main`. Fork PRs do not log in to GHCR or need publishing credentials.
+The `CI` workflow runs `lint` (Biome, added comments, types and harness tests), `audit`, `test-backend` (fresh PostgreSQL migrations and real ownership integration tests with `RUN_DATABASE_TESTS=1`), `test-web` (Vitest and Nitro build), and `test-e2e` (Chromium smoke tests). The `images` job depends on all five. Its reusable workflow builds and smokes the web and one-shot migration images. Publication waits for every image smoke test, then uploads the exact saved/tested images only on pushes to `main`. Fork PRs do not log in to GHCR or need publishing credentials.
 
 Locally, build with `bun run build`, install Chromium using `bunx playwright install chromium`, then run `bun run test:e2e`. The smoke suite checks API health, SSR landing/hydrated navigation and sign-in/sign-up screens. Authenticated CRUD and session-cookie tests use a disposable database; a real Google OAuth exchange requires provider configuration. Use the disposable test database configuration described by `playwright.config.ts`.
 

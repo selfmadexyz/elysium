@@ -112,7 +112,7 @@ generate-migration:
 
 # Build the one-shot release image, then run it with the deployment environment.
 migration-image tag="elysium-migrate:local":
-    docker build --file packages/backend/Dockerfile --target migrate --tag {{ tag }} .
+    docker build --file packages/web/Dockerfile --target migrate --tag {{ tag }} .
 
 run-migration-image tag="elysium-migrate:local":
     just postgres-start

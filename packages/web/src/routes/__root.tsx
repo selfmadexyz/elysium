@@ -6,21 +6,7 @@ import '@frontend/styles.css';
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { ThemeProvider } from 'next-themes';
-import { lazy, type ReactNode, Suspense } from 'react';
-
-const RouterDevtools = import.meta.env.DEV
-  ? lazy(() =>
-      import('@tanstack/react-router-devtools').then(({ TanStackRouterDevtools }) => ({
-        default: TanStackRouterDevtools,
-      })),
-    )
-  : () => null;
-
-const QueryDevtools = import.meta.env.DEV
-  ? lazy(() =>
-      import('@tanstack/react-query-devtools').then(({ ReactQueryDevtools }) => ({ default: ReactQueryDevtools })),
-    )
-  : () => null;
+import type { ReactNode } from 'react';
 
 const defaultSeo = seo({
   title: 'Elysium — Bun-first full-stack starter',
@@ -96,10 +82,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           {children}
           <Toaster />
         </ThemeProvider>
-        <Suspense>
-          <RouterDevtools position="bottom-right" />
-          <QueryDevtools buttonPosition="bottom-left" />
-        </Suspense>
         <Scripts />
       </body>
     </html>

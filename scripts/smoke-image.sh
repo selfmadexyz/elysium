@@ -2,7 +2,12 @@
 set -euo pipefail
 
 : "${IMAGE:?Set the image to smoke}"
-: "${IMAGE_KIND:?Set web, backend or migrate}"
+: "${IMAGE_KIND:?Set web or migrate}"
+
+case "$IMAGE_KIND" in
+    web|migrate) ;;
+    *) echo "Unsupported image kind: $IMAGE_KIND" >&2; exit 1 ;;
+esac
 
 name="elysium-smoke-${IMAGE_KIND}-${RANDOM}"
 network="${name}-net"
@@ -38,15 +43,14 @@ if [[ "$IMAGE_KIND" == "migrate" ]]; then
     exit 0
 fi
 
-: "${IMAGE_PORT:?Set the image listening port}"
 docker run --detach --name "$name" --network "$network" \
-    --publish "127.0.0.1::${IMAGE_PORT}" \
-    --env PORT="$IMAGE_PORT" \
+    --publish "127.0.0.1::3000" \
+    --env PORT=3000 \
     --env DATABASE_URL="postgresql://postgres:postgres@${database}:5432/elysium_test" \
     --env BETTER_AUTH_SECRET=smoke-only-secret-at-least-32-characters \
     --env BETTER_AUTH_URL=http://localhost --env APP_URL=http://localhost \
     --env GOOGLE_CLIENT_ID=smoke-client --env GOOGLE_CLIENT_SECRET=smoke-secret "$IMAGE" >/dev/null
-address=$(docker port "$name" "${IMAGE_PORT}/tcp")
+address=$(docker port "$name" 3000/tcp)
 for attempt in {1..30}; do
     if curl --fail --silent --connect-timeout 1 --max-time 3 "http://${address}/api/health" | grep -q '"status":"healthy"'; then
         exit 0

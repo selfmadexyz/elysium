@@ -1,232 +1,128 @@
 # Elysium
 
-An opinionated, Bun-first starter for authenticated TypeScript products. Elysium combines TanStack Start, Elysia, Better Auth, Drizzle, and PostgreSQL behind one public origin, with shared types from the database to React.
+A Bun-first TypeScript starter with React 19, TanStack Start/Query/Form, Elysia, Better Auth, Drizzle and PostgreSQL. Public pages generate HTML for SEO; private screens can stay client-rendered. One server serves the web application and `/api/*` on the same origin.
 
-It is designed for dashboards, internal tools, and SaaS applications that need SSR for public pages and a separate business API boundary without starting from a large framework preset.
-
-> [!IMPORTANT]
-> Elysium is a starter and reference implementation. It is not production-ready by default. Replace the sample domain, adapt its authorization model, and complete the [production checklist](docs/production-checklist.md) before shipping.
-
-## What is included
-
-- Bun 1.4.4 workspaces and TypeScript strict mode
-- TanStack Start with React 19, SSR, file-based routing, and route metadata
-- TanStack Query and TanStack Form
-- Elysia mounted under the same-origin `/api/*` route
-- Eden Treaty for the typed API client
-- Better Auth with email/password and Google OAuth
-- PostgreSQL, Drizzle ORM, and generated TypeBox schemas
-- Tailwind CSS 4 and shadcn/ui components built on Base UI
-- Authenticated, owner-scoped posts CRUD as an integration example
-- Backend tests, CI verification, and separate web, API, and migration images
-
-## Architecture
-
-```text
-Browser ── http://localhost:3000
-              │
-              ├── pages, SSR, metadata ── TanStack Start
-              └── /api/* ─────────────── Elysia
-                                            ├── Better Auth
-                                            ├── feature modules
-                                            └── Drizzle ── PostgreSQL :5434
-```
-
-The browser uses one origin for pages, authentication, and API requests. TanStack Start imports the Elysia application as an in-process request handler. Elysia can also run independently on port 3001 for isolated backend development.
-
-Read [Architecture](docs/architecture.md) for ownership rules, request flows, and supported deployment shapes.
-
-## Prerequisites
-
-- [Bun 1.4.4](https://bun.sh/)
-- [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2 and the daemon running
-- [just](https://github.com/casey/just)
-- OpenSSL for generating the local auth secret
+The posts example provides authenticated, owner-scoped CRUD. Replace its domain and branding for your product; tenant permissions, email delivery, abuse controls and production operations remain application work.
 
 ## Quick start
 
-### 1. Clone and install
+Install [Bun 1.4.4](https://bun.sh/), [Docker with Compose v2](https://docs.docker.com/get-docker/), [just](https://github.com/casey/just) and OpenSSL, then start Docker.
 
 ```bash
 git clone https://github.com/selfmadexyz/elysium.git
 cd elysium
 just install
-```
-
-`just install` uses the committed lockfile.
-
-### 2. Create local environment files
-
-```bash
+bun run hooks
 cp packages/backend/.env.example packages/backend/.env
 cp packages/web/.env.example packages/web/.env
-```
-
-Generate an auth secret:
-
-```bash
 openssl rand -base64 32
 ```
 
-Configure the backend for the local PostgreSQL container and same-origin web server:
+Put the generated secret and local connection values in `packages/backend/.env`:
 
 ```env
-# packages/backend/.env
 PORT=3001
 DATABASE_URL=postgresql://postgres:localpassword@localhost:5434/myapp
-BETTER_AUTH_SECRET=<paste the generated value>
+BETTER_AUTH_SECRET=<generated value>
 BETTER_AUTH_URL=http://localhost:3000
 APP_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
-Configure the canonical public origin:
-
-```env
-# packages/web/.env
-VITE_SITE_URL=http://localhost:3000
-```
-
-The backend rejects the example auth secret. Google values must be present; placeholders are sufficient for email/password development, while Google sign-in requires real credentials.
-
-### 3. Start the stack
-
-The root development script loads `packages/backend/.env` into the unified TanStack Start and Elysia process:
-
-```bash
-just dev
-```
-
-`just dev` starts PostgreSQL from `compose.yaml`, waits until it is healthy, applies migrations, and runs the unified TanStack Start and Elysia development server.
-
-Open <http://localhost:3000>. Verify the same-origin API:
-
-```bash
-curl --fail http://localhost:3000/api/health
-```
-
-OpenAPI documentation is available at <http://localhost:3000/api/swagger> outside production. Run `just dev-backend` separately only when you need the standalone Elysia server on port 3001.
-
-### 4. Stop or reset PostgreSQL
-
-```bash
-just stop
-```
-
-`just reset-db` tears down the Compose project and its PostgreSQL volume. It permanently deletes the local database.
-
-## Commands
-
-Run `just` to list the available recipes.
-
-| Command | Effect |
-| --- | --- |
-| `just install` | Install exactly the dependencies in `bun.lock` |
-| `just dev` / `just start` | Prepare PostgreSQL, migrate, and run the unified Start/Elysia server |
-| `just dev-web` | Run the unified Start/Elysia server without preparing PostgreSQL |
-| `just dev-backend` | Run only the standalone Elysia server |
-| `just check` | Run lint, type checks, tests, and production builds |
-| `just lint` | Run repository type and Biome checks |
-| `just test` | Run all workspace test scripts |
-| `just test-integration` | Run backend database tests in an isolated, ephemeral PostgreSQL container |
-| `just build` | Build Elysia and the TanStack Start server |
-| `just migrate` | Apply committed migrations to the local container database |
-| `just generate-migration` | Generate a Drizzle migration |
-| `just postgres-url` | Print the local container connection string |
-| `just stop` | Stop local PostgreSQL |
-| `just reset-db` | Remove local PostgreSQL and its named volume |
-| `just migration-image` | Build the one-shot migration image |
-| `just run-migration-image` | Run the migration image against local Compose PostgreSQL |
-
-Equivalent root package scripts include `bun run dev`, `build`, `typecheck`, `lint`, `test`, `db:migrate`, `db:generate`, and `audit`.
-
-## Dependency policy
-
-The coupled build stack is pinned deliberately: Bun, TanStack Start/Router/Query, Vite, Tailwind, and Better Auth should be upgraded together and validated with `just check` plus the container build. Root overrides currently select patched transitive releases reported by `bun audit`.
-
-The `esbuild` override is newer than the range declared by Drizzle Kit. Keep it only while `bun run db:generate`, tests, and production builds pass; remove it when Drizzle publishes a compatible patched range. Do not update the lockfile without rerunning `bun audit`.
-
-## Environment variables
-
-### Server runtime
-
-These values are needed by standalone Elysia and by the TanStack Start process that serves `/api/*`.
-
-| Variable | Required | Secret | Purpose |
-| --- | --- | --- | --- |
-| `NODE_ENV` | No | No | `development`, `test`, or `production`; defaults to development |
-| `PORT` | No | No | Standalone Elysia port; defaults to 3001 |
-| `DATABASE_URL` | Yes | Yes | PostgreSQL URL |
-| `BETTER_AUTH_SECRET` | Yes | Yes | Better Auth secret, at least 32 characters |
-| `BETTER_AUTH_URL` | Yes | No | Public origin serving `/api/auth/*` |
-| `APP_URL` | Yes | No | Allowed application origin |
-| `GOOGLE_CLIENT_ID` | Yes | Configuration | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | Yes | Google OAuth client secret |
-
-Non-local production values for `APP_URL` and `BETTER_AUTH_URL` must use HTTPS.
-
-### Web build
-
-| Variable | Required | Public | Purpose |
-| --- | --- | --- | --- |
-| `VITE_SITE_URL` | No | Yes | Canonical and Open Graph origin; defaults to `http://localhost:3000` |
-
-Every `VITE_*` value is embedded in the build. Never put a secret in one.
-
-For Google OAuth locally, register:
+The example secret is rejected. OAuth placeholders allow email/password development; Google sign-in needs real provider credentials and this registered callback:
 
 ```text
 http://localhost:3000/api/auth/callback/google
 ```
 
-## Repository layout
+Set the public canonical origin in `packages/web/.env`:
 
-```text
-packages/
-├── backend/
-│   ├── drizzle/             committed migrations
-│   ├── test/                API, environment, and service tests
-│   └── src/
-│       ├── app.ts           import-safe Elysia application
-│       ├── index.ts         standalone server entry point
-│       ├── database/        Drizzle schema and utilities
-│       ├── modules/         auth, health, and posts features
-│       └── routes/          composition under /api
-└── web/
-    └── src/
-        ├── routes/          TanStack Start routes and server handlers
-        ├── pages/           page components
-        ├── components/      product and UI components
-        ├── hooks/           query and mutation hooks
-        └── lib/             auth, API client, SEO, and validation
+```env
+VITE_SITE_URL=http://localhost:3000
 ```
 
-## Design boundaries
+```bash
+just dev
+curl --fail http://localhost:3000/api/health
+```
 
-- TanStack Start owns documents, SSR, routing, metadata, hydration, and the browser boundary.
-- Elysia owns `/api/*`, authentication, authorization, business rules, validation, and database access.
-- Drizzle migrations are committed and applied as an explicit release step.
-- Eden Treaty shares the Elysia contract with the web package; it does not replace runtime validation or authorization.
-- The posts module demonstrates integration and per-user ownership. It is expected to be replaced.
+`just dev` starts PostgreSQL, waits for readiness, applies committed migrations and runs one TanStack Start/Elysia process with the backend environment. Open <http://localhost:3000>; development API documentation is at <http://localhost:3000/api/swagger>.
 
-## Documentation
+`just stop` stops PostgreSQL without deleting its named volume. `just reset-db` permanently deletes the local database. For existing installations, read the [database compatibility notes](docs/troubleshooting.md#postgresql-does-not-start) before resetting or upgrading.
 
-- [Architecture](docs/architecture.md)
-- [Deployment](docs/deployment.md)
-- [Production checklist](docs/production-checklist.md)
+## Boundaries and structure
+
+```text
+Browser → TanStack Start pages + /api adapter → Elysia → Drizzle → PostgreSQL
+                                                └── Better Auth
+```
+
+| Location | Responsibility |
+| --- | --- |
+| `packages/web/src/routes/` | File routes, page UI, metadata and API adapter |
+| `packages/web/src/router.tsx` | A new router and QueryClient per invocation |
+| `packages/web/src/lib/` | Same-origin Eden/auth clients, server session helper and SEO |
+| `packages/web/src/hooks/` | TanStack Query data access |
+| `packages/backend/src/app.ts` | Import-safe Elysia application, no listening socket |
+| `packages/backend/src/modules/` | HTTP routes (`index.ts`), business/database services and models |
+| `packages/backend/drizzle/` | Committed schema migrations |
+| `packages/contracts/src/` | Browser-safe TypeBox request/response schemas and DTOs |
+
+Start owns documents, routing, rendering, hydration and web-specific session adapters. Elysia owns API authentication, authorization, validation, business rules and persistence. Eden shares the API contract with React; runtime validation and authorization still happen on the server. The posts services derive ownership from the session for every read and mutation.
+
+Public `/` and `/get-started` pages are explicitly pre-rendered. `/posts` stays client-rendered behind an authentication guard. Request sessions and query caches must remain isolated, and personalized responses use `no-store`. See [rendering choices](docs/rendering.md) for SSR, generated pages and SPA mode.
+
+The default production process embeds Elysia in the web server. `packages/backend/src/index.ts` remains available on port 3001 for isolated local backend development.
+
+## Commands
+
+Run `just` for all recipes. Root package scripts use Bun; install from the committed lockfile.
+
+| Command | Purpose |
+| --- | --- |
+| `just dev` | Prepare PostgreSQL, migrate and run the application |
+| `just dev-web` | Run the application without preparing PostgreSQL |
+| `just dev-backend` | Run standalone Elysia for local development |
+| `bun run lint` / `bun run typecheck` | Biome and workspace type checks |
+| `bun run lint:comments` | Review added comments and reject review annotations |
+| `just test` | Harness, backend and web unit tests |
+| `just test-integration` | Backend integration tests in disposable PostgreSQL |
+| `just build` | Build the Start/Nitro server under Bun and type-check web |
+| `just generate-migration` / `just migrate` | Generate or apply Drizzle migrations |
+| `just migration-image` / `just run-migration-image` | Build or locally run the migration image |
+| `bun run audit` | Check production dependency advisories |
+
+For browser tests, build first, install Chromium with `bunx playwright install chromium`, then run `bun run test:e2e`. Set `E2E_DATABASE_URL` to a migrated disposable database named `elysium_test` or `elysium_e2e`; fixtures refuse other names. Coverage includes public HTML/metadata, hydration, auth guards, session renewal and paginated CRUD. Real Google OAuth still needs provider configuration.
+
+After schema edits, generate and review SQL, then commit schema and migration together. Never rewrite applied migrations or use `db:push` against shared databases. [Migration 0002](docs/deployment.md#existing-posts-and-migration-0002) needs a reviewed ownership backfill for existing posts.
+
+## Configuration
+
+Backend variables are server runtime configuration, including for the integrated web process:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection URL; secret |
+| `BETTER_AUTH_SECRET` | Unique secret, at least 32 characters |
+| `BETTER_AUTH_URL` | Public origin serving `/api/auth/*` |
+| `APP_URL` | Allowed application origin |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth application configuration and secret |
+| `NODE_ENV` | Runtime mode; defaults to development |
+| `PORT` | Standalone API port; defaults to 3001 |
+
+Production non-local auth/application origins require HTTPS. `VITE_SITE_URL` is public **build-time** configuration for canonical and social URLs; changing it requires a rebuild. Every `VITE_*` value reaches the browser: keep database and auth secrets in runtime configuration. Public pre-render builds do not need a database or backend secrets, while API and session requests do.
+
+## Dependencies and production
+
+Keep the pinned Bun and coupled TanStack/Vite/Tailwind/Better Auth stack aligned when upgrading. Validate types, tests, build, production advisories and containers. Root overrides select patched transitive releases; the `esbuild` override exceeds Drizzle Kit's declared range and should be removed when upstream accepts a patched compatible release. Verify `bun run db:generate` when changing it.
+
+Before deploying, replace sample content and social artwork, define product authorization and recovery policies, and configure backups, observability and abuse protection. Nitro 3 currently uses a beta release. There is no configured staging/production deployment target.
+
+- [Deployment and migration safety](docs/deployment.md)
+- [Rendering and SEO](docs/rendering.md)
 - [Troubleshooting](docs/troubleshooting.md)
-- [Web package](packages/web/README.md)
-- [Backend package](packages/backend/README.md)
-
-## Current limits
-
-- No web component, auth lifecycle, or browser end-to-end tests are committed yet.
-- Distributed rate limiting, audit logging, email delivery, background jobs, and production observability are not included.
-- Tenant isolation and product-specific permissions remain application work.
-- The included social image is the project logo rather than a dedicated preview card.
-- Nitro 3 is currently consumed from its beta channel, and Rolldown emits non-blocking `use client` warnings for TanStack Router and Base UI during builds.
-- Backup policy, restore testing, deployment topology, and incident response remain the adopter's responsibility.
+- [AI harness, reviews and CI](docs/ai-harness.md)
 
 ## License
 

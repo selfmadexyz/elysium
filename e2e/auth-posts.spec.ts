@@ -68,7 +68,11 @@ test('all posts remain reachable and deleting a final page returns to the previo
     await expect(page.getByRole('row')).toHaveCount(21);
     await expect(page.getByRole('cell', { name: 'Post 21', exact: true })).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('posts-desktop.png'), fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 320, height: 844 });
+    await expect(
+      page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Home', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Log out', exact: true })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Posts pagination' })).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('posts-mobile.png'), fullPage: true });
     await expect(page.getByRole('button', { name: 'Previous page' })).toBeDisabled();
@@ -87,6 +91,11 @@ test('all posts remain reachable and deleting a final page returns to the previo
     await page.getByRole('dialog').getByRole('button', { name: 'Create Post', exact: true }).click();
     await expect(page.getByRole('cell', { name: 'Newest post', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Next page' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Log out', exact: true }).click();
+    await expect(page).toHaveURL(/\/sign-in$/);
+    expect(await page.evaluate(async () => (await fetch('/api/posts')).status)).toBe(401);
+    await page.goto('/posts');
+    await expect(page).toHaveURL(/\/sign-in/);
   } finally {
     if (userId) await db.query('DELETE FROM "user" WHERE id = $1', [userId]);
     await db.end();

@@ -18,15 +18,9 @@ jobs:
           - name: web
             file: packages/web/Dockerfile
             target: runtime
-            port: 3000
-          - name: backend
-            file: packages/backend/Dockerfile
-            target: runtime
-            port: 3001
           - name: migrate
-            file: packages/backend/Dockerfile
+            file: packages/web/Dockerfile
             target: migrate
-            port: 0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -58,7 +52,6 @@ jobs:
         env:
           IMAGE: elysium-${{ matrix.name }}:smoke
           IMAGE_KIND: ${{ matrix.name }}
-          IMAGE_PORT: ${{ matrix.port }}
         run: bash scripts/smoke-image.sh
       - name: Save the tested image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -85,7 +78,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [web, backend, migrate]
+        name: [web, migrate]
     steps:
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
