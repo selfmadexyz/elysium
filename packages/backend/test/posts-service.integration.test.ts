@@ -69,7 +69,7 @@ describeDatabase('posts service PostgreSQL integration', () => {
     const headers = {
       'Content-Type': 'application/json',
       Origin: 'http://localhost:3000',
-      'X-Forwarded-For': '203.0.113.10',
+      'X-Forwarded-For': `203.0.113.${Math.floor(Math.random() * 250) + 1}`,
     };
 
     try {

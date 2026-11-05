@@ -81,6 +81,12 @@ For a managed production database, run the same release image with a reviewed en
 docker run --rm --env-file /secure/path/production.env elysium-migrate:<release>
 ```
 
+## Rate limits and migration 0003
+
+`0003_add_rate_limit.sql` adds the `rate_limit` table; it is additive and safe to apply before the matching web image. Better Auth stores one counter per client IP and auth path there, so limits survive restarts and are shared by every replica. Defaults: 100 auth requests per minute per client, the stricter Better Auth rules for sign-in/sign-up, and three password-reset, verification-email or account-deletion requests per minute.
+
+The client IP comes from `X-Forwarded-For`. Deploy behind a proxy that overwrites that header, or set `advanced.ipAddress.ipAddressHeaders`/`trustedProxies` in `packages/backend/src/modules/auth/auth.ts` for your platform; otherwise clients can spoof it to bypass limits. To roll back, deploy code using `storage: 'memory'` first, then drop the table.
+
 ## HTTP and caching
 
 The web server handles generated pages, SSR, assets and API forwarding. Elysia handles API/auth; it does not serve a generic SPA fallback. Development `/api/swagger` documentation is disabled in production.

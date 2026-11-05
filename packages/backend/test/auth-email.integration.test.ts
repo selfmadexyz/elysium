@@ -74,7 +74,7 @@ describeDatabase('email verification and password reset', () => {
   });
 
   it('resets a password through the emailed link and revokes existing sessions', async () => {
-    const ip = '203.0.113.20';
+    const ip = `203.0.113.${Math.floor(Math.random() * 250) + 1}`;
     const credentials = { email: `${prefix}-reset@example.com`, password: 'original-test-password-42', name: 'Grace' };
     await post('/sign-up/email', credentials, ip);
     await db.update(table.user).set({ emailVerified: true }).where(eq(table.user.email, credentials.email));
