@@ -62,4 +62,23 @@ describe('parseEnv', () => {
       }),
     ).toThrow('must use https');
   });
+
+  it('logs emails locally outside production by default', () => {
+    expect(parseEnv(validEnv).EMAIL_TRANSPORT).toBe('console');
+  });
+
+  it('requires Resend credentials in production unless another transport is chosen', () => {
+    const production = {
+      ...validEnv,
+      NODE_ENV: 'production',
+      APP_URL: 'https://app.example.com',
+      BETTER_AUTH_URL: 'https://app.example.com',
+    };
+
+    expect(() => parseEnv(production)).toThrow('RESEND_API_KEY and EMAIL_FROM are required');
+    expect(
+      parseEnv({ ...production, RESEND_API_KEY: 're_key', EMAIL_FROM: 'App <no-reply@example.com>' }).EMAIL_TRANSPORT,
+    ).toBe('resend');
+    expect(parseEnv({ ...production, EMAIL_TRANSPORT: 'console' }).EMAIL_TRANSPORT).toBe('console');
+  });
 });

@@ -18,14 +18,20 @@ const envSchema = Type.Object(
       default: 'info',
     }),
     OTEL_SERVICE_NAME: Type.String({ minLength: 1, default: 'elysium' }),
+    EMAIL_TRANSPORT: Type.Optional(Type.Union([Type.Literal('resend'), Type.Literal('console')])),
+    EMAIL_FROM: Type.Optional(Type.String({ minLength: 3 })),
+    RESEND_API_KEY: Type.Optional(Type.String({ minLength: 1 })),
     BETTER_STACK_SOURCE_TOKEN: Type.Optional(Type.String({ minLength: 1 })),
     BETTER_STACK_INGESTING_HOST: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );
 
-export type Env = Omit<typeof envSchema.static, 'BETTER_STACK_INGESTING_HOST'> & {
+type ParsedEnv = typeof envSchema.static;
+
+export type Env = Omit<ParsedEnv, 'BETTER_STACK_INGESTING_HOST' | 'EMAIL_TRANSPORT'> & {
   BETTER_STACK_LOGS_URL?: string;
+  EMAIL_TRANSPORT: NonNullable<ParsedEnv['EMAIL_TRANSPORT']>;
 };
 
 const compiledEnvSchema = TypeCompiler.Compile(envSchema);
@@ -88,11 +94,20 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     throw new Error('BETTER_STACK_SOURCE_TOKEN and BETTER_STACK_INGESTING_HOST must be set together');
   }
 
+  const appUrl = parseHttpUrl('APP_URL', decoded.APP_URL, decoded.NODE_ENV);
+  const betterAuthUrl = parseHttpUrl('BETTER_AUTH_URL', decoded.BETTER_AUTH_URL, decoded.NODE_ENV);
+
+  const emailTransport = decoded.EMAIL_TRANSPORT ?? (decoded.NODE_ENV === 'production' ? 'resend' : 'console');
+  if (emailTransport === 'resend' && (!decoded.RESEND_API_KEY || !decoded.EMAIL_FROM)) {
+    throw new Error('RESEND_API_KEY and EMAIL_FROM are required when EMAIL_TRANSPORT is resend');
+  }
+
   return {
     ...rest,
+    EMAIL_TRANSPORT: emailTransport,
     ...(BETTER_STACK_INGESTING_HOST && { BETTER_STACK_LOGS_URL: parseIngestingHost(BETTER_STACK_INGESTING_HOST) }),
-    APP_URL: parseHttpUrl('APP_URL', decoded.APP_URL, decoded.NODE_ENV),
-    BETTER_AUTH_URL: parseHttpUrl('BETTER_AUTH_URL', decoded.BETTER_AUTH_URL, decoded.NODE_ENV),
+    APP_URL: appUrl,
+    BETTER_AUTH_URL: betterAuthUrl,
   };
 }
 
