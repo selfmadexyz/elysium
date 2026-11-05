@@ -124,6 +124,8 @@ Email/password accounts must verify their address before they can log in. Sign-u
 
 In development, `EMAIL_TRANSPORT=console` prints each message and its link in the server log. In production, verify a sending domain in [Resend](https://resend.com/domains), create an API key with sending access, then set `EMAIL_FROM` and `RESEND_API_KEY`; startup fails if they are missing. Messages are sent after the auth response and delivery failures are logged as errors. Templates live in `packages/backend/src/modules/auth/emails.ts`.
 
+`/account` lets a signed-in user rename themselves, change their password (signing out other sessions) and delete their account. Deletion sends a confirmation link; opening it deletes the user, sessions and posts.
+
 Existing email/password users created before verification was required will receive a verification link on their next log-in attempt.
 
 ## Logs and errors

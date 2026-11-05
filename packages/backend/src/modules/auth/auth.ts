@@ -2,7 +2,7 @@ import * as schema from '@backend/database/schema';
 import { env } from '@backend/env';
 import { db } from '@backend/lib/db';
 import { deliverInBackground } from '@backend/lib/email';
-import { resetPasswordEmail, verificationEmail } from '@backend/modules/auth/emails';
+import { deleteAccountEmail, resetPasswordEmail, verificationEmail } from '@backend/modules/auth/emails';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 
@@ -37,6 +37,15 @@ export const auth = betterAuth({
     expiresIn: 60 * 60,
     sendVerificationEmail: async ({ user, url }) => {
       deliverInBackground(verificationEmail(user, url));
+    },
+  },
+  user: {
+    deleteUser: {
+      enabled: true,
+      deleteTokenExpiresIn: 60 * 60,
+      sendDeleteAccountVerification: async ({ user, url }) => {
+        deliverInBackground(deleteAccountEmail(user, url));
+      },
     },
   },
   account: {

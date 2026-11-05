@@ -12,11 +12,11 @@ const headers = { 'Content-Type': 'application/json', Origin: 'http://localhost:
 
 const clientIp = `198.51.100.${Math.floor(Math.random() * 250) + 1}`;
 
-const post = (path: string, body: unknown, ip = clientIp) =>
+const post = (path: string, body: unknown, ip = clientIp, extraHeaders: Record<string, string> = {}) =>
   app.handle(
     new Request(`http://localhost:3001/api/auth${path}`, {
       method: 'POST',
-      headers: { ...headers, 'X-Forwarded-For': ip },
+      headers: { ...headers, 'X-Forwarded-For': ip, ...extraHeaders },
       body: JSON.stringify(body),
     }),
   );
@@ -105,6 +105,32 @@ describeDatabase('email verification and password reset', () => {
       new Request('http://localhost:3001/api/auth/get-session', { headers: { Cookie: oldSession } }),
     );
     expect(await session.json()).toBeNull();
+  });
+
+  it('deletes an account and its posts only after the emailed confirmation link is opened', async () => {
+    const ip = `203.0.113.${Math.floor(Math.random() * 250) + 1}`;
+    const credentials = { email: `${prefix}-delete@example.com`, password: 'deletion-test-password-42', name: 'Linus' };
+    await post('/sign-up/email', credentials, ip);
+    await db.update(table.user).set({ emailVerified: true }).where(eq(table.user.email, credentials.email));
+    const cookie = cookieHeader(await post('/sign-in/email', credentials, ip));
+    const [user] = await db.select().from(table.user).where(eq(table.user.email, credentials.email));
+    if (!user) throw new Error('fixture user missing');
+    await db.insert(table.postsTable).values({ title: 'Doomed', body: 'Deleted with the account', authorId: user.id });
+
+    const deleteLink = await nextEmailLink('delete-account', async () => {
+      const response = await post('/delete-user', { callbackURL: '/' }, ip, { Cookie: cookie });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ success: true, message: 'Verification email sent' });
+    });
+    expect(await db.select().from(table.user).where(eq(table.user.id, user.id))).toHaveLength(1);
+
+    const confirmed = await app.handle(
+      new Request(`http://localhost:3001${deleteLink.pathname}${deleteLink.search}`, { headers: { Cookie: cookie } }),
+    );
+    expect(confirmed.status).toBe(302);
+    expect(confirmed.headers.get('location')).toBe('/');
+    expect(await db.select().from(table.user).where(eq(table.user.id, user.id))).toEqual([]);
+    expect(await db.select().from(table.postsTable).where(eq(table.postsTable.authorId, user.id))).toEqual([]);
   });
 
   it('answers password reset requests for unknown emails without sending mail', async () => {

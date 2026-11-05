@@ -39,6 +39,21 @@ export const newPasswordSchema = z
     path: ['confirmPassword'],
   });
 
+export const profileSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(255, 'Name is too long'),
+});
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
 export const resetPasswordSearchSchema = z.object({
   token: z.string().min(1).optional(),
   error: z.string().optional(),
