@@ -38,4 +38,28 @@ describe('parseEnv', () => {
       }),
     ).toThrow('APP_URL must use https in production');
   });
+
+  it('builds the Better Stack logs endpoint from the ingesting host', () => {
+    const parsed = parseEnv({
+      ...validEnv,
+      BETTER_STACK_SOURCE_TOKEN: 'source-token',
+      BETTER_STACK_INGESTING_HOST: 's123.eu-nbg-2.betterstackdata.com',
+    });
+
+    expect(parsed.BETTER_STACK_LOGS_URL).toBe('https://s123.eu-nbg-2.betterstackdata.com/v1/logs');
+  });
+
+  it('requires the Better Stack token and host together', () => {
+    expect(() => parseEnv({ ...validEnv, BETTER_STACK_SOURCE_TOKEN: 'source-token' })).toThrow('must be set together');
+  });
+
+  it('rejects a plain http Better Stack endpoint', () => {
+    expect(() =>
+      parseEnv({
+        ...validEnv,
+        BETTER_STACK_SOURCE_TOKEN: 'source-token',
+        BETTER_STACK_INGESTING_HOST: 'http://s123.betterstackdata.com',
+      }),
+    ).toThrow('must use https');
+  });
 });

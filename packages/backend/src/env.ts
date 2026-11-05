@@ -14,11 +14,19 @@ const envSchema = Type.Object(
     GOOGLE_CLIENT_ID: Type.String({ minLength: 1 }),
     GOOGLE_CLIENT_SECRET: Type.String({ minLength: 1 }),
     APP_URL: Type.String({ minLength: 1 }),
+    LOG_LEVEL: Type.Union([Type.Literal('debug'), Type.Literal('info'), Type.Literal('warn'), Type.Literal('error')], {
+      default: 'info',
+    }),
+    OTEL_SERVICE_NAME: Type.String({ minLength: 1, default: 'elysium' }),
+    BETTER_STACK_SOURCE_TOKEN: Type.Optional(Type.String({ minLength: 1 })),
+    BETTER_STACK_INGESTING_HOST: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );
 
-export type Env = typeof envSchema.static;
+export type Env = Omit<typeof envSchema.static, 'BETTER_STACK_INGESTING_HOST'> & {
+  BETTER_STACK_LOGS_URL?: string;
+};
 
 const compiledEnvSchema = TypeCompiler.Compile(envSchema);
 const placeholderSecret = 'your-secret-key-here-generate-with-openssl-rand-base64-32';
@@ -43,6 +51,19 @@ const parseHttpUrl = (name: 'APP_URL' | 'BETTER_AUTH_URL', value: string, nodeEn
   return url.origin;
 };
 
+const parseIngestingHost = (value: string) => {
+  let url: URL;
+  try {
+    url = new URL(value.includes('://') ? value : `https://${value}`);
+  } catch {
+    throw new Error('BETTER_STACK_INGESTING_HOST must be a host name such as s123.eu-nbg-2.betterstackdata.com');
+  }
+  if (url.protocol !== 'https:') {
+    throw new Error('BETTER_STACK_INGESTING_HOST must use https');
+  }
+  return `${url.origin}/v1/logs`;
+};
+
 export function parseEnv(source: Record<string, string | undefined>): Env {
   const candidate = Value.Convert(envSchema, Value.Default(envSchema, structuredClone(source)));
   Value.Clean(envSchema, candidate);
@@ -62,8 +83,14 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     throw new Error('BETTER_AUTH_SECRET must not use the example placeholder');
   }
 
+  const { BETTER_STACK_INGESTING_HOST, ...rest } = decoded;
+  if (Boolean(BETTER_STACK_INGESTING_HOST) !== Boolean(decoded.BETTER_STACK_SOURCE_TOKEN)) {
+    throw new Error('BETTER_STACK_SOURCE_TOKEN and BETTER_STACK_INGESTING_HOST must be set together');
+  }
+
   return {
-    ...decoded,
+    ...rest,
+    ...(BETTER_STACK_INGESTING_HOST && { BETTER_STACK_LOGS_URL: parseIngestingHost(BETTER_STACK_INGESTING_HOST) }),
     APP_URL: parseHttpUrl('APP_URL', decoded.APP_URL, decoded.NODE_ENV),
     BETTER_AUTH_URL: parseHttpUrl('BETTER_AUTH_URL', decoded.BETTER_AUTH_URL, decoded.NODE_ENV),
   };

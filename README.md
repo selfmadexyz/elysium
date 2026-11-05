@@ -110,8 +110,17 @@ Backend variables are server runtime configuration, including for the integrated
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth application configuration and secret |
 | `NODE_ENV` | Runtime mode; defaults to development |
 | `PORT` | Standalone API port; defaults to 3001 |
+| `LOG_LEVEL` | `debug`, `info` (default), `warn` or `error` |
+| `OTEL_SERVICE_NAME` | `service.name` attached to exported logs; defaults to `elysium` |
+| `BETTER_STACK_SOURCE_TOKEN`, `BETTER_STACK_INGESTING_HOST` | Optional Better Stack OpenTelemetry source; token is a secret |
 
 Production non-local auth/application origins require HTTPS. `VITE_SITE_URL` is public **build-time** configuration for canonical and social URLs; changing it requires a rebuild. Every `VITE_*` value reaches the browser: keep database and auth secrets in runtime configuration. Public pre-render builds do not need a database or backend secrets, while API and session requests do.
+
+## Logs and errors
+
+`@backend/lib/logger` writes structured logs: readable lines in development, JSON lines on stdout/stderr in production. Every API request is logged with its method, route pattern, status and duration; query strings and raw paths are never logged because auth links carry tokens. Unexpected errors (5xx and unknown codes) and uncaught exceptions are logged with `exception.type`, `exception.message`, `exception.stacktrace` and `exception.cause`.
+
+When both Better Stack variables are set, the same records are also exported over OTLP/HTTP to `https://<ingesting host>/v1/logs`. In Better Stack, create a source with the **OpenTelemetry** platform, then copy its source token and ingesting host. Filter on `level = ERROR` (or `severity_text`) for errors and create an alert on that query. Export is disabled in tests. Never log request bodies, cookies, tokens or credentials.
 
 ## Dependencies and production
 
