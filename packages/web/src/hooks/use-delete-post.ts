@@ -1,9 +1,10 @@
 import { client } from '@frontend/lib/client';
-import { queryClient } from '@frontend/lib/query-client';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export function useDeletePost() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (postId: number) => {
       const response = await client.api.posts({ id: postId }).delete();

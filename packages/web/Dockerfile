@@ -1,20 +1,40 @@
-# ---- Build ----
-FROM oven/bun:latest AS build
+ARG BUN_VERSION=1.4.4
+
+FROM oven/bun:${BUN_VERSION} AS dependencies
 WORKDIR /app
 
 COPY package.json bun.lock ./
 COPY packages/web/package.json ./packages/web/
 COPY packages/backend/package.json ./packages/backend/
-RUN bun install --ignore-scripts
+COPY packages/contracts/package.json ./packages/contracts/
+RUN bun install --frozen-lockfile --ignore-scripts
 
+FROM dependencies AS migrate
+COPY tsconfig.json ./
+COPY packages/backend ./packages/backend
+COPY packages/contracts ./packages/contracts
+ENV NODE_ENV=production
+WORKDIR /app/packages/backend
+CMD ["bun", "run", "db:migrate"]
+
+FROM dependencies AS build
 COPY . .
 
-RUN bun run --cwd packages/web build
+ARG VITE_SITE_URL=http://localhost:3000
+ENV NODE_ENV=production
+ENV VITE_SITE_URL=${VITE_SITE_URL}
 
-# ---- Serve ----
-FROM oven/bun:latest
+RUN bun run build:web
+
+FROM oven/bun:${BUN_VERSION} AS runtime
 WORKDIR /app
-COPY --from=build /app/packages/web/dist ./dist
-RUN bun install -g serve
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+COPY --from=build --chown=bun:bun /app/packages/web/.output ./packages/web/.output
+
+USER bun
 EXPOSE 3000
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
+CMD ["bun", "packages/web/.output/server/index.mjs"]

@@ -1,4 +1,4 @@
-import type { PostResponse } from '@backend/modules/posts/model';
+import type { PostResponse } from '@elysium/contracts/posts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +16,15 @@ type DeletePostAlertProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   post: PostResponse;
+  onDeleted?: () => void;
 };
 
-export function DeletePostAlert({ open, onOpenChange, post }: DeletePostAlertProps) {
+export function DeletePostAlert({ open, onOpenChange, post, onDeleted }: DeletePostAlertProps) {
   const deletePost = useDeletePost();
 
   const handleDelete = async () => {
     await deletePost.mutateAsync(post.id);
+    onDeleted?.();
     onOpenChange(false);
   };
 

@@ -1,182 +1,129 @@
-<div align="center">
-  <img src="https://starter-elysium.vercel.app/logo512.png" alt="Elysium Logo" width="200"/>
+# Elysium
 
-# Full Stack TypeScript Starter
+A Bun-first TypeScript starter with React 19, TanStack Start/Query/Form, Elysia, Better Auth, Drizzle and PostgreSQL. Public pages generate HTML for SEO; private screens can stay client-rendered. One server serves the web application and `/api/*` on the same origin.
 
-  Modern full-stack monorepo with Bun, React, Elysia, and Drizzle ORM. End-to-end type safety from database to UI.
-</div>
+The posts example provides authenticated, owner-scoped CRUD. Replace its domain and branding for your product; tenant permissions, email delivery, abuse controls and production operations remain application work.
 
-## Tech Stack
+## Quick start
 
-- **Runtime:** Bun
-- **Frontend:** React 19 + TanStack Router/Query + Tailwind CSS 4
-- **Backend:** Elysia + TypeScript
-- **Database:** PostgreSQL + Drizzle ORM + drizzle-typebox
-- **Auth:** Better Auth (Google OAuth)
-- **Type-safety:** Eden Treaty (end-to-end)
-
-## Quick Start
-
-1. **Install dependencies**
-
-   ```bash
-   bun install
-   ```
-
-2. **Setup environment variables**
-
-   ```bash
-   # Backend
-   cp packages/backend/.env.example packages/backend/.env
-   # Frontend
-   cp packages/web/.env.example packages/web/.env
-   ```
-
-3. **Configure environment variables**
-   - Get Google OAuth credentials at <https://console.cloud.google.com>
-   - Generate auth secret: `openssl rand -base64 32`
-   - Setup PostgreSQL database
-
-4. **Start backend** (PostgreSQL, migrations, and backend server)
-
-   ```bash
-   just start
-   ```
-
-   This will:
-   - Start PostgreSQL container
-   - Install dependencies
-   - Run database migrations
-   - Start backend server
-
-5. **Start web dev server** (in a separate terminal)
-
-   ```bash
-   cd packages/web && bun run dev
-   ```
-
-6. **Stop everything**
-
-   ```bash
-   just stop
-   ```
-
-## Project Structure
-
-```
-packages/
-├── backend/              # Elysia API
-│   ├── src/
-│   │   ├── modules/      # Feature modules (posts, auth, health)
-│   │   │   └── posts/
-│   │   │       ├── index.ts    # Routes (controller)
-│   │   │       ├── service.ts  # Business logic
-│   │   │       └── model.ts    # Validation + types
-│   │   ├── database/     # DB schema
-│   │   ├── lib/          # Errors, DB, models
-│   │   └── routes/       # Route aggregation
-│   └── drizzle/          # Migrations
-└── web/                  # React frontend
-    └── src/
-        ├── pages/        # Page components
-        ├── hooks/        # Custom hooks (use-posts, use-create-post, etc.)
-        ├── components/   # UI components
-        └── lib/          # Client, auth, utils
-```
-
-## Architecture
-
-### Backend - Feature Modules
-
-Each module follows the same pattern:
-
-- `index.ts` - Routes (Elysia controller)
-- `service.ts` - Business logic + DB queries
-- `model.ts` - TypeBox schemas + types (generated from Drizzle)
-
-**Error Handling:**
-
-- Custom error classes (`BadRequestError`, `NotFoundError`, etc.)
-- Auto re-throw in `ServerError` constructor
-- Global error handler in `index.ts`
-
-### Frontend - TanStack Router + Query
-
-- **Router:** Code-based with `createRoute()`, protected routes, data loaders
-- **Query:** Custom hooks pattern, consistent error handling, auto cache invalidation
-
-## Available Commands (justfile)
-
-### Main Commands
-
-- `just start` - Start everything (PostgreSQL, install dependencies, run migrations, dev server)
-- `just stop` - Stop PostgreSQL container
-- `just reset-db` - Remove PostgreSQL container completely (stop + remove)
-
-### Database Commands (Drizzle)
-
-**Note:** Migrations are automatically run when using `just start`. Use these commands for manual operations:
+Install [Bun 1.4.4](https://bun.sh/), [Docker with Compose v2](https://docs.docker.com/get-docker/), [just](https://github.com/casey/just) and OpenSSL, then start Docker.
 
 ```bash
-cd packages/backend
-
-# Run migrations manually
-just migrate
-# or
-bun run db:migrate
-
-# Push schema changes (development - bypasses migrations)
-bun run db:push
-
-# Generate new migrations
-bun run db:generate
-
-# Open Drizzle Studio
-bunx drizzle-kit studio
+git clone https://github.com/selfmadexyz/elysium.git
+cd elysium
+just install
+bun run hooks
+cp packages/backend/.env.example packages/backend/.env
+cp packages/web/.env.example packages/web/.env
+openssl rand -base64 32
 ```
 
-## Environment Variables
-
-**Backend** (`packages/backend/.env`):
+Put the generated secret and local connection values in `packages/backend/.env`:
 
 ```env
 PORT=3001
 DATABASE_URL=postgresql://postgres:localpassword@localhost:5434/myapp
-BETTER_AUTH_SECRET=<openssl rand -base64 32>
-BETTER_AUTH_URL=http://localhost:3001
+BETTER_AUTH_SECRET=<generated value>
+BETTER_AUTH_URL=http://localhost:3000
 APP_URL=http://localhost:3000
-GOOGLE_CLIENT_ID=<from console.cloud.google.com>
-GOOGLE_CLIENT_SECRET=<from console.cloud.google.com>
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
-**Frontend** (`packages/web/.env`):
+The example secret is rejected. OAuth placeholders allow email/password development; Google sign-in needs real provider credentials and this registered callback:
+
+```text
+http://localhost:3000/api/auth/callback/google
+```
+
+Set the public canonical origin in `packages/web/.env`:
 
 ```env
-VITE_API_URL=http://localhost:3001
-VITE_AUTH_URL=http://localhost:3001
+VITE_SITE_URL=http://localhost:3000
 ```
 
-**Google OAuth Setup:**
+```bash
+just dev
+curl --fail http://localhost:3000/api/health
+```
 
-1. <https://console.cloud.google.com> → Create project → OAuth 2.0
-2. Add redirect URI: `http://localhost:3001/api/auth/callback/google`
+`just dev` starts PostgreSQL, waits for readiness, applies committed migrations and runs one TanStack Start/Elysia process with the backend environment. Open <http://localhost:3000>; development API documentation is at <http://localhost:3000/api/swagger>.
 
-## Documentation
+`just stop` stops PostgreSQL without deleting its named volume. `just reset-db` permanently deletes the local database. For existing installations, read the [database compatibility notes](docs/troubleshooting.md#postgresql-does-not-start) before resetting or upgrading.
 
-- **API Docs:** <http://localhost:3001/swagger>
-- **DB Studio:** `bunx drizzle-kit studio` in `packages/backend`
-- **PostgreSQL URL:** Run `just postgres-url` to see the connection string
+## Boundaries and structure
 
-## Features
+```text
+Browser → TanStack Start pages + /api adapter → Elysia → Drizzle → PostgreSQL
+                                                └── Better Auth
+```
 
-- ✅ End-to-end type safety (DB → API → UI)
-- ✅ Feature-based modules (Elysia best practices)
-- ✅ Auth with Google OAuth (Better Auth)
-- ✅ Consistent error handling (backend + frontend)
-- ✅ Auto-generated schemas (drizzle-typebox)
-- ✅ CRUD example with mutations (TanStack Query)
-- ✅ Path aliases + monorepo workspace
+| Location | Responsibility |
+| --- | --- |
+| `packages/web/src/routes/` | File routes, page UI, metadata and API adapter |
+| `packages/web/src/router.tsx` | A new router and QueryClient per invocation |
+| `packages/web/src/lib/` | Same-origin Eden/auth clients, server session helper and SEO |
+| `packages/web/src/hooks/` | TanStack Query data access |
+| `packages/backend/src/app.ts` | Import-safe Elysia application, no listening socket |
+| `packages/backend/src/modules/` | HTTP routes (`index.ts`), business/database services and models |
+| `packages/backend/drizzle/` | Committed schema migrations |
+| `packages/contracts/src/` | Browser-safe TypeBox request/response schemas and DTOs |
+
+Start owns documents, routing, rendering, hydration and web-specific session adapters. Elysia owns API authentication, authorization, validation, business rules and persistence. Eden shares the API contract with React; runtime validation and authorization still happen on the server. The posts services derive ownership from the session for every read and mutation.
+
+Public `/` and `/get-started` pages are explicitly pre-rendered. `/posts` stays client-rendered behind an authentication guard. Request sessions and query caches must remain isolated, and personalized responses use `no-store`. See [rendering choices](docs/rendering.md) for SSR, generated pages and SPA mode.
+
+The default production process embeds Elysia in the web server. `packages/backend/src/index.ts` remains available on port 3001 for isolated local backend development.
+
+## Commands
+
+Run `just` for all recipes. Root package scripts use Bun; install from the committed lockfile.
+
+| Command | Purpose |
+| --- | --- |
+| `just dev` | Prepare PostgreSQL, migrate and run the application |
+| `just dev-web` | Run the application without preparing PostgreSQL |
+| `just dev-backend` | Run standalone Elysia for local development |
+| `bun run lint` / `bun run typecheck` | Biome and workspace type checks |
+| `bun run lint:comments` | Review added comments and reject review annotations |
+| `just test` | Harness, backend and web unit tests |
+| `just test-integration` | Backend integration tests in disposable PostgreSQL |
+| `just build` | Build the Start/Nitro server under Bun and type-check web |
+| `just generate-migration` / `just migrate` | Generate or apply Drizzle migrations |
+| `just migration-image` / `just run-migration-image` | Build or locally run the migration image |
+| `bun run audit` | Check production dependency advisories |
+
+For browser tests, build first, install Chromium with `bunx playwright install chromium`, then run `bun run test:e2e`. Set `E2E_DATABASE_URL` to a migrated disposable database named `elysium_test` or `elysium_e2e`; fixtures refuse other names. Coverage includes public HTML/metadata, hydration, auth guards, session renewal and paginated CRUD. Real Google OAuth still needs provider configuration.
+
+After schema edits, generate and review SQL, then commit schema and migration together. Never rewrite applied migrations or use `db:push` against shared databases. [Migration 0002](docs/deployment.md#existing-posts-and-migration-0002) needs a reviewed ownership backfill for existing posts.
+
+## Configuration
+
+Backend variables are server runtime configuration, including for the integrated web process:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection URL; secret |
+| `BETTER_AUTH_SECRET` | Unique secret, at least 32 characters |
+| `BETTER_AUTH_URL` | Public origin serving `/api/auth/*` |
+| `APP_URL` | Allowed application origin |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth application configuration and secret |
+| `NODE_ENV` | Runtime mode; defaults to development |
+| `PORT` | Standalone API port; defaults to 3001 |
+
+Production non-local auth/application origins require HTTPS. `VITE_SITE_URL` is public **build-time** configuration for canonical and social URLs; changing it requires a rebuild. Every `VITE_*` value reaches the browser: keep database and auth secrets in runtime configuration. Public pre-render builds do not need a database or backend secrets, while API and session requests do.
+
+## Dependencies and production
+
+Keep the pinned Bun and coupled TanStack/Vite/Tailwind/Better Auth stack aligned when upgrading. Validate types, tests, build, production advisories and containers. Root overrides select patched transitive releases; the `esbuild` override exceeds Drizzle Kit's declared range and should be removed when upstream accepts a patched compatible release. Verify `bun run db:generate` when changing it.
+
+Before deploying, replace sample content and social artwork, define product authorization and recovery policies, and configure backups, observability and abuse protection. Nitro 3 currently uses a beta release. There is no configured staging/production deployment target.
+
+- [Deployment and migration safety](docs/deployment.md)
+- [Rendering and SEO](docs/rendering.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [AI harness, reviews and CI](docs/ai-harness.md)
 
 ## License
 
-MIT
+[MIT](LICENSE)

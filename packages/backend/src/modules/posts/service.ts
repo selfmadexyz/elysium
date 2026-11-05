@@ -1,65 +1,55 @@
 import { table } from '@backend/database/schema';
 import { db } from '@backend/lib/db';
 import { InternalServerError, NotFoundError } from '@backend/lib/errors';
-import type { CreatePostRequest, PostResponse, UpdatePostRequest } from '@backend/modules/posts/model';
-import { eq } from 'drizzle-orm';
+import type { ListPostsQuery } from '@backend/modules/posts/model';
+import type { CreatePostRequest, PostResponse, UpdatePostRequest } from '@elysium/contracts/posts';
+import { and, desc, eq } from 'drizzle-orm';
 
-export async function getAllPosts(): Promise<PostResponse[]> {
-  try {
-    return await db.select().from(table.postsTable);
-  } catch (error) {
-    throw new InternalServerError('Failed to fetch posts', error);
-  }
-}
+export const postsService = {
+  async list(authorId: string, pagination: ListPostsQuery = {}): Promise<PostResponse[]> {
+    return db
+      .select()
+      .from(table.postsTable)
+      .where(eq(table.postsTable.authorId, authorId))
+      .orderBy(desc(table.postsTable.id))
+      .limit(pagination.limit ?? 20)
+      .offset(pagination.offset ?? 0);
+  },
 
-export async function getPostById(id: number): Promise<PostResponse> {
-  try {
-    const post = await db.select().from(table.postsTable).where(eq(table.postsTable.id, id));
+  async get(id: number, authorId: string): Promise<PostResponse> {
+    const [post] = await db
+      .select()
+      .from(table.postsTable)
+      .where(and(eq(table.postsTable.id, id), eq(table.postsTable.authorId, authorId)))
+      .limit(1);
+    if (!post) throw new NotFoundError(`Post with id ${id} not found`);
+    return post;
+  },
 
-    if (!post[0]) {
-      throw new NotFoundError(`Post with id ${id} not found`);
-    }
+  async create(authorId: string, request: CreatePostRequest): Promise<PostResponse> {
+    const [post] = await db
+      .insert(table.postsTable)
+      .values({ ...request, authorId })
+      .returning();
+    if (!post) throw new InternalServerError('Failed to create post');
+    return post;
+  },
 
-    return post[0];
-  } catch (error) {
-    throw new InternalServerError('Failed to fetch post', error);
-  }
-}
+  async update(id: number, authorId: string, request: UpdatePostRequest): Promise<PostResponse> {
+    const [post] = await db
+      .update(table.postsTable)
+      .set(request)
+      .where(and(eq(table.postsTable.id, id), eq(table.postsTable.authorId, authorId)))
+      .returning();
+    if (!post) throw new NotFoundError(`Post with id ${id} not found`);
+    return post;
+  },
 
-export async function createPost(request: CreatePostRequest): Promise<PostResponse> {
-  try {
-    const newPost = await db.insert(table.postsTable).values(request).returning();
-    if (!newPost[0]) {
-      throw new InternalServerError('Failed to create post');
-    }
-    return newPost[0];
-  } catch (error) {
-    throw new InternalServerError('Failed to create post', error);
-  }
-}
-
-export async function updatePost(id: number, request: UpdatePostRequest): Promise<PostResponse> {
-  try {
-    const updatedPost = await db.update(table.postsTable).set(request).where(eq(table.postsTable.id, id)).returning();
-
-    if (!updatedPost[0]) {
-      throw new NotFoundError(`Post with id ${id} not found`);
-    }
-
-    return updatedPost[0];
-  } catch (error) {
-    throw new InternalServerError('Failed to update post', error);
-  }
-}
-
-export async function deletePost(id: number): Promise<void> {
-  try {
-    const result = await db.delete(table.postsTable).where(eq(table.postsTable.id, id)).returning();
-
-    if (!result[0]) {
-      throw new NotFoundError(`Post with id ${id} not found`);
-    }
-  } catch (error) {
-    throw new InternalServerError('Failed to delete post', error);
-  }
-}
+  async delete(id: number, authorId: string): Promise<void> {
+    const [post] = await db
+      .delete(table.postsTable)
+      .where(and(eq(table.postsTable.id, id), eq(table.postsTable.authorId, authorId)))
+      .returning({ id: table.postsTable.id });
+    if (!post) throw new NotFoundError(`Post with id ${id} not found`);
+  },
+};

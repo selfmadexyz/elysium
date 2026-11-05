@@ -13,20 +13,39 @@ export const auth = betterAuth({
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      requireEmailVerification: true,
     },
   },
   emailAndPassword: {
     enabled: true,
+    autoSignIn: false,
+    minPasswordLength: 14,
+    maxPasswordLength: 128,
+    revokeSessionsOnPasswordReset: true,
+  },
+  account: {
+    encryptOAuthTokens: true,
+    storeStateStrategy: 'database',
+    accountLinking: {
+      disableImplicitLinking: true,
+      allowDifferentEmails: false,
+    },
+  },
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    storage: 'memory',
   },
   baseURL: env.BETTER_AUTH_URL,
   trustedOrigins: [env.APP_URL, env.BETTER_AUTH_URL],
   basePath: '/api/auth',
   secret: env.BETTER_AUTH_SECRET,
   advanced: {
-    useSecureCookies: process.env.NODE_ENV === 'production',
+    useSecureCookies: env.NODE_ENV === 'production',
     defaultCookieAttributes: {
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      secure: env.NODE_ENV === 'production',
       httpOnly: true,
       path: '/',
     },
