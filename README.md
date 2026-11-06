@@ -114,7 +114,8 @@ Backend variables are server runtime configuration, including for the integrated
 | `EMAIL_FROM`, `RESEND_API_KEY` | Sender such as `App <no-reply@your-domain>` and Resend API key; key is a secret |
 | `LOG_LEVEL` | `debug`, `info` (default), `warn` or `error` |
 | `OTEL_SERVICE_NAME` | `service.name` attached to exported logs; defaults to `elysium` |
-| `BETTER_STACK_SOURCE_TOKEN`, `BETTER_STACK_INGESTING_HOST` | Optional Better Stack OpenTelemetry source; token is a secret |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` or `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` | Optional OTLP/HTTP log export; the generic endpoint gets `/v1/logs` appended |
+| `OTEL_EXPORTER_OTLP_HEADERS` or `OTEL_EXPORTER_OTLP_LOGS_HEADERS` | Export headers as `key=value` pairs with URL-encoded values; usually holds a secret token |
 
 Production non-local auth/application origins require HTTPS. `VITE_SITE_URL` is public **build-time** configuration for canonical and social URLs; changing it requires a rebuild. Every `VITE_*` value reaches the browser: keep database and auth secrets in runtime configuration. Public pre-render builds do not need a database or backend secrets, while API and session requests do.
 
@@ -132,7 +133,7 @@ Existing email/password users created before verification was required will rece
 
 `@backend/lib/logger` writes structured logs: readable lines in development, JSON lines on stdout/stderr in production. Every API request is logged with its method, route pattern, status and duration; query strings and raw paths are never logged because auth links carry tokens. Unexpected errors (5xx and unknown codes) and uncaught exceptions are logged with `exception.type`, `exception.message`, `exception.stacktrace` and `exception.cause`.
 
-When both Better Stack variables are set, the same records are also exported over OTLP/HTTP to `https://<ingesting host>/v1/logs`. In Better Stack, create a source with the **OpenTelemetry** platform, then copy its source token and ingesting host. Filter on `level = ERROR` (or `severity_text`) for errors and create an alert on that query. Export is disabled in tests. Never log request bodies, cookies, tokens or credentials.
+When an OTLP endpoint is set, the same records are also exported in batches over OTLP/HTTP, using the standard OpenTelemetry variables, so any backend that accepts OTLP logs or a self-hosted OpenTelemetry Collector works without code changes. Errors arrive with severity `ERROR`; alert on that in your backend. Export is disabled in tests. Never log request bodies, cookies, tokens or credentials.
 
 ## Dependencies and production
 

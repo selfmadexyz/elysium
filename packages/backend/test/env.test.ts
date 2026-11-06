@@ -39,28 +39,47 @@ describe('parseEnv', () => {
     ).toThrow('APP_URL must use https in production');
   });
 
-  it('builds the Better Stack logs endpoint from the ingesting host', () => {
+  it('appends /v1/logs to the generic OTLP endpoint, so collectors receive logs on the spec path', () => {
+    const parsed = parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_ENDPOINT: 'https://collector.example.com:4318/' });
+
+    expect(parsed.OTLP_LOGS?.url).toBe('https://collector.example.com:4318/v1/logs');
+  });
+
+  it('uses the logs-specific endpoint as is and before the generic one, as the OTLP spec requires', () => {
     const parsed = parseEnv({
       ...validEnv,
-      BETTER_STACK_SOURCE_TOKEN: 'source-token',
-      BETTER_STACK_INGESTING_HOST: 's123.eu-nbg-2.betterstackdata.com',
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'https://generic.example.com',
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: 'https://logs.example.com/ingest',
     });
 
-    expect(parsed.BETTER_STACK_LOGS_URL).toBe('https://s123.eu-nbg-2.betterstackdata.com/v1/logs');
+    expect(parsed.OTLP_LOGS?.url).toBe('https://logs.example.com/ingest');
   });
 
-  it('requires the Better Stack token and host together', () => {
-    expect(() => parseEnv({ ...validEnv, BETTER_STACK_SOURCE_TOKEN: 'source-token' })).toThrow('must be set together');
+  it('decodes OTLP headers, so URL-encoded bearer tokens reach the backend intact', () => {
+    const parsed = parseEnv({
+      ...validEnv,
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'https://collector.example.com',
+      OTEL_EXPORTER_OTLP_HEADERS: 'Authorization=Bearer%20secret-token, x-team = core',
+    });
+
+    expect(parsed.OTLP_LOGS?.headers).toEqual({ Authorization: 'Bearer secret-token', 'x-team': 'core' });
   });
 
-  it('rejects a plain http Better Stack endpoint', () => {
+  it('leaves log export off without an endpoint, so local runs never ship logs', () => {
+    expect(parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_HEADERS: 'Authorization=Bearer%20x' }).OTLP_LOGS).toBeUndefined();
+  });
+
+  it('rejects malformed OTLP settings at startup, so a typo does not silently drop logs', () => {
+    expect(() => parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_ENDPOINT: 'collector:4318' })).toThrow(
+      'OTEL_EXPORTER_OTLP_ENDPOINT must use http or https',
+    );
     expect(() =>
       parseEnv({
         ...validEnv,
-        BETTER_STACK_SOURCE_TOKEN: 'source-token',
-        BETTER_STACK_INGESTING_HOST: 'http://s123.betterstackdata.com',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://c.example.com',
+        OTEL_EXPORTER_OTLP_HEADERS: 'token',
       }),
-    ).toThrow('must use https');
+    ).toThrow('OTLP headers must be comma-separated key=value pairs');
   });
 
   it('logs emails locally outside production by default', () => {

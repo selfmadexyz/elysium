@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { betterStackProcessor, createLogger } from '@backend/lib/logger';
+import { createLogger, otlpLogProcessor } from '@backend/lib/logger';
 import { SeverityNumber } from '@opentelemetry/api';
 import { InMemoryLogRecordExporter, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
 
@@ -51,7 +51,7 @@ describe('createLogger', () => {
     expect(record?.attributes['error.code']).toBe('UNKNOWN');
   });
 
-  it('sends batched OTLP logs with the Better Stack source token', async () => {
+  it('exports batched OTLP/HTTP logs with the configured headers, so authenticated backends accept them', async () => {
     const received: { authorization: string | null; contentType: string | null; body: string }[] = [];
     const server = Bun.serve({
       port: 0,
@@ -70,7 +70,12 @@ describe('createLogger', () => {
         format: 'none',
         serviceName: 'elysium-test',
         environment: 'test',
-        processors: [betterStackProcessor(`http://127.0.0.1:${server.port}/v1/logs`, 'source-token')],
+        processors: [
+          otlpLogProcessor({
+            url: `http://127.0.0.1:${server.port}/v1/logs`,
+            headers: { Authorization: 'Bearer source-token' },
+          }),
+        ],
       });
 
       logger.error('Export check', new Error('exported failure'));

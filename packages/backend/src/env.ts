@@ -21,17 +21,19 @@ const envSchema = Type.Object(
     EMAIL_TRANSPORT: Type.Optional(Type.Union([Type.Literal('resend'), Type.Literal('console')])),
     EMAIL_FROM: Type.Optional(Type.String({ minLength: 3 })),
     RESEND_API_KEY: Type.Optional(Type.String({ minLength: 1 })),
-    BETTER_STACK_SOURCE_TOKEN: Type.Optional(Type.String({ minLength: 1 })),
-    BETTER_STACK_INGESTING_HOST: Type.Optional(Type.String({ minLength: 1 })),
+    OTEL_EXPORTER_OTLP_ENDPOINT: Type.Optional(Type.String({ minLength: 1 })),
+    OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: Type.Optional(Type.String({ minLength: 1 })),
+    OTEL_EXPORTER_OTLP_HEADERS: Type.Optional(Type.String({ minLength: 1 })),
+    OTEL_EXPORTER_OTLP_LOGS_HEADERS: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );
 
 type ParsedEnv = typeof envSchema.static;
 
-export type Env = Omit<ParsedEnv, 'BETTER_STACK_INGESTING_HOST' | 'EMAIL_TRANSPORT'> & {
-  BETTER_STACK_LOGS_URL?: string;
+export type Env = Omit<ParsedEnv, 'EMAIL_TRANSPORT'> & {
   EMAIL_TRANSPORT: NonNullable<ParsedEnv['EMAIL_TRANSPORT']>;
+  OTLP_LOGS?: { url: string; headers: Record<string, string> };
 };
 
 const compiledEnvSchema = TypeCompiler.Compile(envSchema);
@@ -57,17 +59,37 @@ const parseHttpUrl = (name: 'APP_URL' | 'BETTER_AUTH_URL', value: string, nodeEn
   return url.origin;
 };
 
-const parseIngestingHost = (value: string) => {
+const parseOtlpLogs = (decoded: ParsedEnv): Env['OTLP_LOGS'] => {
+  const name = decoded.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+    ? 'OTEL_EXPORTER_OTLP_LOGS_ENDPOINT'
+    : 'OTEL_EXPORTER_OTLP_ENDPOINT';
+  const endpoint = decoded[name];
+  if (!endpoint) return undefined;
+
   let url: URL;
   try {
-    url = new URL(value.includes('://') ? value : `https://${value}`);
+    url = new URL(endpoint);
   } catch {
-    throw new Error('BETTER_STACK_INGESTING_HOST must be a host name such as s123.eu-nbg-2.betterstackdata.com');
+    throw new Error(`${name} must be a valid absolute URL`);
   }
-  if (url.protocol !== 'https:') {
-    throw new Error('BETTER_STACK_INGESTING_HOST must use https');
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`${name} must use http or https`);
   }
-  return `${url.origin}/v1/logs`;
+  if (name === 'OTEL_EXPORTER_OTLP_ENDPOINT') {
+    url.pathname = `${url.pathname.replace(/\/$/, '')}/v1/logs`;
+  }
+
+  const headers: Record<string, string> = {};
+  for (const pair of (decoded.OTEL_EXPORTER_OTLP_LOGS_HEADERS ?? decoded.OTEL_EXPORTER_OTLP_HEADERS ?? '').split(',')) {
+    if (!pair.trim()) continue;
+    const separator = pair.indexOf('=');
+    if (separator < 1) {
+      throw new Error('OTLP headers must be comma-separated key=value pairs');
+    }
+    headers[decodeURIComponent(pair.slice(0, separator).trim())] = decodeURIComponent(pair.slice(separator + 1).trim());
+  }
+
+  return { url: url.toString(), headers };
 };
 
 export function parseEnv(source: Record<string, string | undefined>): Env {
@@ -89,10 +111,7 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     throw new Error('BETTER_AUTH_SECRET must not use the example placeholder');
   }
 
-  const { BETTER_STACK_INGESTING_HOST, ...rest } = decoded;
-  if (Boolean(BETTER_STACK_INGESTING_HOST) !== Boolean(decoded.BETTER_STACK_SOURCE_TOKEN)) {
-    throw new Error('BETTER_STACK_SOURCE_TOKEN and BETTER_STACK_INGESTING_HOST must be set together');
-  }
+  const otlpLogs = parseOtlpLogs(decoded);
 
   const appUrl = parseHttpUrl('APP_URL', decoded.APP_URL, decoded.NODE_ENV);
   const betterAuthUrl = parseHttpUrl('BETTER_AUTH_URL', decoded.BETTER_AUTH_URL, decoded.NODE_ENV);
@@ -103,9 +122,9 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
   }
 
   return {
-    ...rest,
+    ...decoded,
     EMAIL_TRANSPORT: emailTransport,
-    ...(BETTER_STACK_INGESTING_HOST && { BETTER_STACK_LOGS_URL: parseIngestingHost(BETTER_STACK_INGESTING_HOST) }),
+    ...(otlpLogs && { OTLP_LOGS: otlpLogs }),
     APP_URL: appUrl,
     BETTER_AUTH_URL: betterAuthUrl,
   };
