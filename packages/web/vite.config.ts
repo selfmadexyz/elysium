@@ -19,7 +19,7 @@ export default defineConfig({
     }),
     viteReact(),
     nitro({
-      ...(process.env.VERCEL ? {} : { preset: 'bun' }),
+      preset: 'bun',
       routeRules: {
         '/assets/**': {
           headers: {
