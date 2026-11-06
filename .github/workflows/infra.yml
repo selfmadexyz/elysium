@@ -11,9 +11,10 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  CHECKPOINT_DISABLE: "1"
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
 
 jobs:
   validate:
@@ -25,9 +26,8 @@ jobs:
         stack: [betterstack]
     defaults:
       run:
+        shell: bash
         working-directory: infra/terraform/${{ matrix.stack }}
-    env:
-      CHECKPOINT_DISABLE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
@@ -35,5 +35,148 @@ jobs:
           terraform_version: 1.17.0
           terraform_wrapper: false
       - run: terraform fmt -check -recursive -diff
-      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform init -backend=false -lockfile=readonly
       - run: terraform validate
+
+  plan:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: infra-plan
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      group: infra-plan-${{ matrix.stack }}-${{ matrix.environment }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [betterstack]
+        environment: [production]
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra/terraform/${{ matrix.stack }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_ENDPOINT_URL_S3: https://${{ vars.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      TF_VAR_telemetry_api_token: ${{ secrets.BETTERSTACK_TELEMETRY_API_TOKEN }}
+      TF_VAR_uptime_api_token: ${{ secrets.BETTERSTACK_UPTIME_API_TOKEN }}
+    steps:
+      - name: Check credentials
+        id: credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$CLOUDFLARE_ACCOUNT_ID" || -z "$TF_VAR_telemetry_api_token" || -z "$TF_VAR_uptime_api_token" ]]; then
+            echo "::notice::Infra credentials are not configured; skipping plan. See infra/README.md."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: .
+      - if: steps.credentials.outputs.configured == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.credentials.outputs.configured == 'true'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.0
+          terraform_wrapper: false
+      - if: steps.credentials.outputs.configured == 'true'
+        run: terraform init -lockfile=readonly -backend-config=envs/${{ matrix.environment }}.s3.tfbackend
+      - if: steps.credentials.outputs.configured == 'true'
+        id: plan
+        run: |
+          set +e
+          terraform plan -lock=false -no-color -detailed-exitcode \
+            -var-file=envs/${{ matrix.environment }}.tfvars -out=plan.tfplan > plan.txt 2>&1
+          status=$?
+          set -e
+          cat plan.txt
+          echo "exitcode=$status" >> "$GITHUB_OUTPUT"
+          [[ $status -ne 1 ]]
+      - if: always() && steps.credentials.outputs.configured == 'true' && steps.plan.outputs.exitcode != ''
+        name: Comment plan on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXIT_CODE: ${{ steps.plan.outputs.exitcode }}
+          MARKER: "<!-- infra-plan:${{ matrix.stack }}:${{ matrix.environment }} -->"
+          TITLE: "Terraform plan: `${{ matrix.stack }}` / `${{ matrix.environment }}`"
+        run: |
+          case "$EXIT_CODE" in
+            0) result="No changes." ;;
+            2) result="$(grep -E '^Plan:' plan.txt || echo 'Changes detected.')" ;;
+            *) result="**Plan failed.**" ;;
+          esac
+          body="$(printf '%s\n### %s\n\n%s\n\n<details><summary>Show plan</summary>\n\n```\n%s\n```\n</details>\n\n_Commit %s · [run](%s)_' \
+            "$MARKER" "$TITLE" "$result" "$(tail -c 60000 plan.txt)" "${GITHUB_SHA::7}" \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")"
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$MARKER\"))) | .id" | head -n1)"
+          if [[ -n "$existing" ]]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existing" -f body="$body" >/dev/null
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -f body="$body" >/dev/null
+          fi
+
+  apply:
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: infra-production
+    concurrency:
+      group: infra-apply-${{ matrix.stack }}-${{ matrix.environment }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        stack: [betterstack]
+        environment: [production]
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra/terraform/${{ matrix.stack }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_ENDPOINT_URL_S3: https://${{ vars.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_DEFAULT_REGION: auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      STATE_BACKUP_BUCKET: ${{ vars.TF_STATE_BACKUP_BUCKET || 'elysium-terraform-state' }}
+      TF_VAR_telemetry_api_token: ${{ secrets.BETTERSTACK_TELEMETRY_API_TOKEN }}
+      TF_VAR_uptime_api_token: ${{ secrets.BETTERSTACK_UPTIME_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.0
+          terraform_wrapper: false
+      - run: terraform init -lockfile=readonly -backend-config=envs/${{ matrix.environment }}.s3.tfbackend
+      - name: Back up current state
+        run: |
+          terraform state pull > state-backup.tfstate
+          if [[ -s state-backup.tfstate ]]; then
+            key="backups/${{ matrix.stack }}/${{ matrix.environment }}/$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::7}.tfstate"
+            aws s3 cp state-backup.tfstate "s3://$STATE_BACKUP_BUCKET/$key" --only-show-errors
+            echo "State backed up to $STATE_BACKUP_BUCKET/$key"
+          else
+            echo "No existing state to back up."
+          fi
+          rm -f state-backup.tfstate
+      - name: Plan
+        run: |
+          terraform plan -no-color -var-file=envs/${{ matrix.environment }}.tfvars -out=plan.tfplan | tee plan.txt
+          {
+            echo "### Terraform apply: \`${{ matrix.stack }}\` / \`${{ matrix.environment }}\`"
+            echo '```'
+            tail -c 60000 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - run: terraform apply -no-color plan.tfplan
