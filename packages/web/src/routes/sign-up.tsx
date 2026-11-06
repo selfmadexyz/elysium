@@ -1,3 +1,4 @@
+import { AuthShell } from '@frontend/components/auth/auth-shell';
 import { Button } from '@frontend/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@frontend/components/ui/card';
 import {
@@ -16,6 +17,7 @@ import { cn } from '@frontend/lib/utils';
 import { redirectSearchSchema, signUpSchema } from '@frontend/lib/validations';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, redirect, useSearch } from '@tanstack/react-router';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const metadata = seo({
@@ -44,6 +46,7 @@ function SignUp({ className, ...props }: React.ComponentProps<'div'>) {
   const search = useSearch({
     from: '/sign-up',
   });
+  const [pendingEmail, setPendingEmail] = useState<string>();
 
   const handleSignUpWithGoogle = async () => {
     const { error } = await auth.signIn.social({
@@ -64,7 +67,7 @@ function SignUp({ className, ...props }: React.ComponentProps<'div'>) {
       confirmPassword: '',
     },
     validators: {
-      onBlur: signUpSchema,
+      onChange: signUpSchema,
     },
     onSubmit: async ({ value, formApi }) => {
       const { error } = await auth.signUp.email({
@@ -78,10 +81,22 @@ function SignUp({ className, ...props }: React.ComponentProps<'div'>) {
         return;
       }
       formApi.reset();
-      const redirect = encodeURIComponent(search.redirect ?? '/posts');
-      window.location.assign(`/sign-in?redirect=${redirect}`);
+      setPendingEmail(value.email);
     },
   });
+
+  if (pendingEmail) {
+    return (
+      <AuthShell title="Check your inbox" description={`We sent a verification link to ${pendingEmail}.`}>
+        <FieldDescription className="text-center">
+          Open it within 1 hour to activate your account. Already verified?{' '}
+          <Link to="/sign-in" search={search.redirect ? { redirect: search.redirect } : {}}>
+            Log in
+          </Link>
+        </FieldDescription>
+      </AuthShell>
+    );
+  }
 
   return (
     <main id="main-content" className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">

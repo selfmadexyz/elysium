@@ -8,6 +8,7 @@ import {
   ServerError,
   UnauthorizedError,
 } from '@backend/lib/errors';
+import { logger } from '@backend/lib/logger';
 import { routes } from '@backend/routes';
 import cors from '@elysiajs/cors';
 import { Elysia } from 'elysia';
@@ -37,6 +38,13 @@ if (env.NODE_ENV !== 'production') {
   );
 }
 
+const requestStartedAt = new WeakMap<Request, number>();
+
+const responseStatus = (response: unknown, fallback: number | string | undefined) => {
+  if (response instanceof Response) return response.status;
+  return typeof fallback === 'number' ? fallback : 200;
+};
+
 export function createApp() {
   return new Elysia({
     serve: {
@@ -44,8 +52,20 @@ export function createApp() {
       idleTimeout: 30,
     },
   })
-    .onRequest(({ set }) => {
+    .onRequest(({ request, set }) => {
+      requestStartedAt.set(request, performance.now());
       set.headers['Cache-Control'] = 'no-store';
+    })
+    .onAfterResponse(({ request, route, set, responseValue }) => {
+      if (route === '/api/health') return;
+      const startedAt = requestStartedAt.get(request);
+      const status = responseStatus(responseValue, set.status);
+      logger[status >= 500 ? 'warn' : 'info']('HTTP request', {
+        'http.request.method': request.method,
+        'http.route': route,
+        'http.response.status_code': status,
+        ...(startedAt !== undefined && { 'http.server.duration_ms': Math.round(performance.now() - startedAt) }),
+      });
     })
     .error({
       ServerError,
@@ -56,7 +76,7 @@ export function createApp() {
       ConflictError,
       InternalServerError,
     })
-    .onError(({ code, error, set }) => {
+    .onError(({ code, error, set, request, route }) => {
       const errorName = error instanceof Error ? error.name : String(code);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const isClientError =
@@ -66,7 +86,11 @@ export function createApp() {
         (error instanceof ServerError && error.status < 500);
 
       if (!isClientError) {
-        console.error(`[${code}] ${errorName}: ${errorMessage}`, error);
+        logger.error(`${errorName}: ${errorMessage}`, error, {
+          'error.code': String(code),
+          'http.request.method': request.method,
+          'http.route': route,
+        });
       }
 
       if (error instanceof ServerError) {

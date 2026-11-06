@@ -14,3 +14,5 @@ process.env.BETTER_AUTH_URL = 'http://localhost:3001';
 process.env.GOOGLE_CLIENT_ID = 'test-client';
 process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
 process.env.APP_URL = 'http://localhost:3000';
+process.env.LOG_LEVEL ??= 'error';
+process.env.EMAIL_TRANSPORT ??= 'console';

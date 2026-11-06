@@ -28,7 +28,14 @@ BETTER_AUTH_URL=https://app.example.com
 APP_URL=https://app.example.com
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+EMAIL_FROM=App <no-reply@app.example.com>
+RESEND_API_KEY=...
+# Optional: export logs and errors to Better Stack
+BETTER_STACK_SOURCE_TOKEN=...
+BETTER_STACK_INGESTING_HOST=...
 ```
+
+`EMAIL_FROM` must use a domain verified in Resend. Set `EMAIL_TRANSPORT=console` only for disposable smoke environments that must not send mail.
 
 The web image sets `HOST=0.0.0.0`, `PORT=3000` and `NODE_ENV=production`. Backend secrets must never enter `VITE_*` variables, build arguments or browser imports. Register the exact Google callback `https://app.example.com/api/auth/callback/google`; automated email/password fixtures do not verify real OAuth.
 
@@ -73,6 +80,12 @@ For a managed production database, run the same release image with a reviewed en
 ```bash
 docker run --rm --env-file /secure/path/production.env elysium-migrate:<release>
 ```
+
+## Rate limits and migration 0003
+
+`0003_add_rate_limit.sql` adds the `rate_limit` table; it is additive and safe to apply before the matching web image. Better Auth stores one counter per client IP and auth path there, so limits survive restarts and are shared by every replica. Defaults: 100 auth requests per minute per client, the stricter Better Auth rules for sign-in/sign-up, and three password-reset, verification-email or account-deletion requests per minute.
+
+The client IP comes from `X-Forwarded-For`. Deploy behind a proxy that overwrites that header, or set `advanced.ipAddress.ipAddressHeaders`/`trustedProxies` in `packages/backend/src/modules/auth/auth.ts` for your platform; otherwise clients can spoof it to bypass limits. To roll back, deploy code using `storage: 'memory'` first, then drop the table.
 
 ## HTTP and caching
 

@@ -12,15 +12,19 @@
     "db:push": "bunx drizzle-kit push"
   },
   "dependencies": {
-    "@elysium/contracts": "workspace:*",
     "@elysiajs/cors": "^1.4.2",
+    "@elysiajs/openapi": "1.4.16",
+    "@elysium/contracts": "workspace:*",
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.301.0",
+    "@opentelemetry/resources": "^3.1.0",
+    "@opentelemetry/sdk-logs": "^3.1.0",
     "@sinclair/typebox": "0.34.52",
     "better-auth": "1.7.7",
     "drizzle-orm": "0.45.2",
     "elysia": "^1.4.30",
     "file-type": "22.1.0",
-    "pg": "^8.23.0",
-    "@elysiajs/openapi": "1.4.16"
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",

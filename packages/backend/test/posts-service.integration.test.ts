@@ -66,7 +66,11 @@ describeDatabase('posts service PostgreSQL integration', () => {
     const credentials = { email, password: 'pagination-test-password-42', name: 'Pagination tester' };
     const request = (path: string, init?: RequestInit) =>
       app.handle(new Request(`http://localhost:3001/api${path}`, init));
-    const headers = { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' };
+    const headers = {
+      'Content-Type': 'application/json',
+      Origin: 'http://localhost:3000',
+      'X-Forwarded-For': `203.0.113.${Math.floor(Math.random() * 250) + 1}`,
+    };
 
     try {
       const signUp = await request('/auth/sign-up/email', {
@@ -75,6 +79,7 @@ describeDatabase('posts service PostgreSQL integration', () => {
         body: JSON.stringify(credentials),
       });
       expect(signUp.status).toBe(200);
+      await db.update(table.user).set({ emailVerified: true }).where(eq(table.user.email, email));
       const signIn = await request('/auth/sign-in/email', {
         method: 'POST',
         headers,
@@ -115,6 +120,7 @@ describeDatabase('posts service PostgreSQL integration', () => {
 
     try {
       const { user } = await auth.api.signUpEmail({ body: credentials });
+      await db.update(table.user).set({ emailVerified: true }).where(eq(table.user.id, user.id));
       const signIn = await auth.api.signInEmail({ body: credentials, returnHeaders: true });
       const cookie = signIn.headers
         .getSetCookie()

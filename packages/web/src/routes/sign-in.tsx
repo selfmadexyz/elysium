@@ -69,6 +69,10 @@ function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
         password: value.password,
         callbackURL: search.redirect ?? '/posts',
       });
+      if (error?.code === 'EMAIL_NOT_VERIFIED') {
+        toast.info('Verify your email first. We sent you a new verification link.');
+        return;
+      }
       if (error) {
         toast.error(error.message ?? 'Something went wrong');
         return;
@@ -125,7 +129,12 @@ function SignIn({ className, ...props }: React.ComponentProps<'div'>) {
                       const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                       return (
                         <Field data-invalid={isInvalid}>
-                          <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                          <div className="flex items-center justify-between gap-2">
+                            <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                            <Link to="/forgot-password" className="text-sm underline-offset-4 hover:underline">
+                              Forgot password?
+                            </Link>
+                          </div>
                           <Input
                             id={field.name}
                             name={field.name}

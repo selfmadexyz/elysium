@@ -13,16 +13,79 @@ async function database() {
   return client;
 }
 
+const clientIp = () => `198.51.100.${Math.floor(Math.random() * 250) + 1}`;
+
+async function markVerified(email: string) {
+  const db = await database();
+  try {
+    await db.query('UPDATE "user" SET email_verified = true WHERE email = $1', [email]);
+  } finally {
+    await db.end();
+  }
+}
+
 async function signIn(request: APIRequestContext) {
   const email = `browser-${crypto.randomUUID()}@example.invalid`;
+  const headers = { 'X-Forwarded-For': clientIp() };
   const signup = await request.post('/api/auth/sign-up/email', {
     data: { email, password, name: 'Browser fixture' },
+    headers,
   });
   expect(signup.ok()).toBe(true);
   const { user } = await signup.json();
-  expect((await request.post('/api/auth/sign-in/email', { data: { email, password } })).ok()).toBe(true);
+  await markVerified(email);
+  expect((await request.post('/api/auth/sign-in/email', { data: { email, password }, headers })).ok()).toBe(true);
   return user.id as string;
 }
+
+test('a new account must verify its email before logging in', async ({ page }) => {
+  await page.context().setExtraHTTPHeaders({ 'X-Forwarded-For': clientIp() });
+  const email = `browser-${crypto.randomUUID()}@example.invalid`;
+  try {
+    await page.goto('/sign-up');
+    await page.getByLabel('Name', { exact: true }).fill('Ada');
+    await page.getByLabel('Last name', { exact: true }).fill('Lovelace');
+    await page.getByLabel('Email', { exact: true }).fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByLabel('Confirm Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Sign up', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
+    await expect(page.getByText(email)).toBeVisible();
+
+    await page.goto('/sign-in');
+    await page.getByLabel('Email', { exact: true }).fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await expect(page.getByText('Verify your email first.')).toBeVisible();
+    await expect(page).toHaveURL(/\/sign-in/);
+
+    await markVerified(email);
+    await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await expect(page).toHaveURL(/\/posts$/);
+  } finally {
+    const db = await database();
+    await db.query('DELETE FROM "user" WHERE email = $1', [email]);
+    await db.end();
+  }
+});
+
+test('password reset screens guide the visitor without revealing accounts', async ({ page }) => {
+  await page.context().setExtraHTTPHeaders({ 'X-Forwarded-For': clientIp() });
+  await page.goto('/sign-in');
+  await page.getByRole('link', { name: 'Forgot password?' }).click();
+  await expect(page).toHaveURL(/\/forgot-password$/);
+  await page.getByLabel('Email', { exact: true }).fill(`nobody-${crypto.randomUUID()}@example.invalid`);
+  await page.getByRole('button', { name: 'Send reset link' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
+
+  await page.goto('/reset-password');
+  await expect(page.getByRole('heading', { name: 'Link expired' })).toBeVisible();
+  await page.goto('/reset-password?token=not-a-real-token');
+  await page.getByLabel('New password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm new password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Update password' }).click();
+  await expect(page.getByText(/invalid|expired/i)).toBeVisible();
+});
 
 test('the protected route forwards renewed session cookies to the browser', async ({ page }) => {
   const db = await database();
@@ -96,6 +159,44 @@ test('all posts remain reachable and deleting a final page returns to the previo
     expect(await page.evaluate(async () => (await fetch('/api/posts')).status)).toBe(401);
     await page.goto('/posts');
     await expect(page).toHaveURL(/\/sign-in/);
+  } finally {
+    if (userId) await db.query('DELETE FROM "user" WHERE id = $1', [userId]);
+    await db.end();
+  }
+});
+
+test('the account page updates the profile, changes the password and requests deletion', async ({ page }) => {
+  const db = await database();
+  let userId: string | undefined;
+  try {
+    await page.context().setExtraHTTPHeaders({ 'X-Forwarded-For': clientIp() });
+    userId = await signIn(page.request);
+    await page.goto('/account');
+    await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+
+    await page.getByLabel('Display name').fill('Renamed fixture');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Profile updated')).toBeVisible();
+    await expect(page.getByRole('banner').getByText('Renamed fixture')).toBeVisible();
+
+    const newPassword = 'Elysium-changed-password-456!';
+    await page.getByLabel('Current password').fill(password);
+    await page.getByLabel('New password', { exact: true }).fill(newPassword);
+    await page.getByLabel('Confirm new password').fill(newPassword);
+    await page.getByRole('button', { name: 'Change password' }).click();
+    await expect(page.getByText('Password changed.')).toBeVisible();
+    const result = await db.query('SELECT email FROM "user" WHERE id = $1', [userId]);
+    const email = result.rows[0].email as string;
+    expect((await page.request.post('/api/auth/sign-in/email', { data: { email, password: newPassword } })).ok()).toBe(
+      true,
+    );
+
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.screenshot({ path: test.info().outputPath('account-mobile.png'), fullPage: true });
+    await page.getByRole('button', { name: 'Delete account' }).click();
+    await page.getByRole('button', { name: 'Send confirmation link' }).click();
+    await expect(page.getByRole('status')).toContainText('We sent a confirmation link');
+    expect((await db.query('SELECT 1 FROM "user" WHERE id = $1', [userId])).rowCount).toBe(1);
   } finally {
     if (userId) await db.query('DELETE FROM "user" WHERE id = $1', [userId]);
     await db.end();

@@ -29,6 +29,13 @@ export const AppLayout = () => {
             >
               Posts
             </Link>
+            <Link
+              to="/account"
+              activeProps={{ 'aria-current': 'page', className: 'font-semibold' }}
+              className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Account
+            </Link>
           </nav>
           <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center gap-3">
             <div className="min-w-0 text-sm">

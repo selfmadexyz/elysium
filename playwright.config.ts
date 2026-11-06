@@ -32,6 +32,7 @@ export default defineConfig({
       APP_URL: baseURL,
       GOOGLE_CLIENT_ID: 'e2e-placeholder',
       GOOGLE_CLIENT_SECRET: 'e2e-placeholder',
+      EMAIL_TRANSPORT: 'console',
     },
   },
 });

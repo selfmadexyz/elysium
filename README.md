@@ -110,8 +110,29 @@ Backend variables are server runtime configuration, including for the integrated
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth application configuration and secret |
 | `NODE_ENV` | Runtime mode; defaults to development |
 | `PORT` | Standalone API port; defaults to 3001 |
+| `EMAIL_TRANSPORT` | `console` (default outside production) logs emails; `resend` (production default) sends them |
+| `EMAIL_FROM`, `RESEND_API_KEY` | Sender such as `App <no-reply@your-domain>` and Resend API key; key is a secret |
+| `LOG_LEVEL` | `debug`, `info` (default), `warn` or `error` |
+| `OTEL_SERVICE_NAME` | `service.name` attached to exported logs; defaults to `elysium` |
+| `BETTER_STACK_SOURCE_TOKEN`, `BETTER_STACK_INGESTING_HOST` | Optional Better Stack OpenTelemetry source; token is a secret |
 
 Production non-local auth/application origins require HTTPS. `VITE_SITE_URL` is public **build-time** configuration for canonical and social URLs; changing it requires a rebuild. Every `VITE_*` value reaches the browser: keep database and auth secrets in runtime configuration. Public pre-render builds do not need a database or backend secrets, while API and session requests do.
+
+## Email
+
+Email/password accounts must verify their address before they can log in. Sign-up sends a verification link, logging in with an unverified address sends a new one, and opening the link signs the user in. `/forgot-password` sends a reset link to `/reset-password`; a reset revokes the user's other sessions. Links expire after one hour. Google accounts arrive verified.
+
+In development, `EMAIL_TRANSPORT=console` prints each message and its link in the server log. In production, verify a sending domain in [Resend](https://resend.com/domains), create an API key with sending access, then set `EMAIL_FROM` and `RESEND_API_KEY`; startup fails if they are missing. Messages are sent after the auth response and delivery failures are logged as errors. Templates live in `packages/backend/src/modules/auth/emails.ts`.
+
+`/account` lets a signed-in user rename themselves, change their password (signing out other sessions) and delete their account. Deletion sends a confirmation link; opening it deletes the user, sessions and posts.
+
+Existing email/password users created before verification was required will receive a verification link on their next log-in attempt.
+
+## Logs and errors
+
+`@backend/lib/logger` writes structured logs: readable lines in development, JSON lines on stdout/stderr in production. Every API request is logged with its method, route pattern, status and duration; query strings and raw paths are never logged because auth links carry tokens. Unexpected errors (5xx and unknown codes) and uncaught exceptions are logged with `exception.type`, `exception.message`, `exception.stacktrace` and `exception.cause`.
+
+When both Better Stack variables are set, the same records are also exported over OTLP/HTTP to `https://<ingesting host>/v1/logs`. In Better Stack, create a source with the **OpenTelemetry** platform, then copy its source token and ingesting host. Filter on `level = ERROR` (or `severity_text`) for errors and create an alert on that query. Export is disabled in tests. Never log request bodies, cookies, tokens or credentials.
 
 ## Dependencies and production
 

@@ -49,7 +49,8 @@ docker run --detach --name "$name" --network "$network" \
     --env DATABASE_URL="postgresql://postgres:postgres@${database}:5432/elysium_test" \
     --env BETTER_AUTH_SECRET=smoke-only-secret-at-least-32-characters \
     --env BETTER_AUTH_URL=http://localhost --env APP_URL=http://localhost \
-    --env GOOGLE_CLIENT_ID=smoke-client --env GOOGLE_CLIENT_SECRET=smoke-secret "$IMAGE" >/dev/null
+    --env GOOGLE_CLIENT_ID=smoke-client --env GOOGLE_CLIENT_SECRET=smoke-secret \
+    --env EMAIL_TRANSPORT=console "$IMAGE" >/dev/null
 address=$(docker port "$name" 3000/tcp)
 for attempt in {1..30}; do
     if curl --fail --silent --connect-timeout 1 --max-time 3 "http://${address}/api/health" | grep -q '"status":"healthy"'; then

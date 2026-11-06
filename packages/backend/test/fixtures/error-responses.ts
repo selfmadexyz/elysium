@@ -1,4 +1,5 @@
 import { createApp } from '@backend/app';
+import { db } from '@backend/lib/db';
 import { InternalServerError, NotFoundError, ServerError } from '@backend/lib/errors';
 import { t } from 'elysia';
 
@@ -66,3 +67,4 @@ console.log(
     },
   }),
 );
+await db.$client.end();
