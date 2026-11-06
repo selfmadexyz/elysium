@@ -81,6 +81,8 @@ For a managed production database, run the same release image with a reviewed en
 docker run --rm --env-file /secure/path/production.env elysium-migrate:<release>
 ```
 
+The web runtime image also carries the migrations: `bun /app/migrate/migrate.mjs` applies them with Drizzle's migrator, which shares the `drizzle.__drizzle_migrations` journal with `bun run db:migrate`. Use it as the release or pre-deploy command on platforms that run one in the new image before switching traffic, so no separate migration image is needed. It needs only `DATABASE_URL` and exits non-zero on failure, which should stop the rollout.
+
 ## Rate limits and migration 0003
 
 `0003_add_rate_limit.sql` adds the `rate_limit` table; it is additive and safe to apply before the matching web image. Better Auth stores one counter per client IP and auth path there, so limits survive restarts and are shared by every replica. Defaults: 100 auth requests per minute per client, the stricter Better Auth rules for sign-in/sign-up, and three password-reset, verification-email or account-deletion requests per minute.

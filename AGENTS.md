@@ -111,6 +111,6 @@ Run what the change touches, and report failures as they are:
 ## Deployment
 
 - Pushes to `main` publish `ghcr.io/<owner>/elysium-web` and `elysium-migrate` (`packages/web/Dockerfile` targets `runtime` and `migrate`) after every CI job and the image smoke test pass (`.github/workflows/docker.yml`). Publishing requires the `PUBLIC_APP_URL` repository variable.
-- The `migrate` image runs `db:migrate`; a schema change must work for the currently running web image until the new one rolls out.
+- The `migrate` image runs `db:migrate`, and the web image ships the same migrations as `bun /app/migrate/migrate.mjs` for platforms with a pre-deploy command; a schema change must work for the currently running web image until the new one rolls out.
 - No staging or production target is configured in this repo: do not add deploy hooks, credentials or release promotion.
 - The starter is platform-agnostic: it ships a Bun server and Docker images, never one hosting provider's config files, SDKs or env names. Platform-specific setup belongs in the project created from this template.

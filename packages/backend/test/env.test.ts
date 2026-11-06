@@ -110,4 +110,11 @@ describe('parseEnv', () => {
       'smtp://user:pass@localhost:1025',
     );
   });
+
+  it('treats empty values as unset, so blank fields in a hosting dashboard do not fail startup', () => {
+    const parsed = parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_ENDPOINT: '', SMTP_URL: '', EMAIL_FROM: '' });
+
+    expect(parsed.OTLP_LOGS).toBeUndefined();
+    expect(parsed.SMTP_URL).toBeUndefined();
+  });
 });

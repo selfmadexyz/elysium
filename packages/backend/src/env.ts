@@ -93,7 +93,8 @@ const parseOtlpLogs = (decoded: ParsedEnv): Env['OTLP_LOGS'] => {
 };
 
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const candidate = Value.Convert(envSchema, Value.Default(envSchema, structuredClone(source)));
+  const values = Object.fromEntries(Object.entries(source).filter(([, value]) => value !== undefined && value !== ''));
+  const candidate = Value.Convert(envSchema, Value.Default(envSchema, values));
   Value.Clean(envSchema, candidate);
 
   const errors = Array.from(compiledEnvSchema.Errors(candidate));

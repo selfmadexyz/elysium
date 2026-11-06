@@ -43,6 +43,12 @@ if [[ "$IMAGE_KIND" == "migrate" ]]; then
     exit 0
 fi
 
+docker run --rm --network "$network" \
+    --env DATABASE_URL="postgresql://postgres:postgres@${database}:5432/elysium_test" \
+    "$IMAGE" bun /app/migrate/migrate.mjs
+docker exec "$database" psql -U postgres -d elysium_test -Atc \
+    "SELECT to_regclass('public.posts') IS NOT NULL AND to_regclass('public.rate_limit') IS NOT NULL" | grep -qx t
+
 docker run --detach --name "$name" --network "$network" \
     --publish "127.0.0.1::3000" \
     --env PORT=3000 \
