@@ -29,13 +29,13 @@ APP_URL=https://app.example.com
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 EMAIL_FROM=App <no-reply@app.example.com>
-RESEND_API_KEY=...
+SMTP_URL=smtps://user:password@smtp.example.com:465
 # Optional: export logs and errors to any OTLP/HTTP backend or collector
 OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.example.com
 OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20...
 ```
 
-`EMAIL_FROM` must use a domain verified in Resend. Set `EMAIL_TRANSPORT=console` only for disposable smoke environments that must not send mail.
+`EMAIL_FROM` must use a domain verified with your SMTP provider. Set `EMAIL_TRANSPORT=console` only for disposable smoke environments that must not send mail.
 
 The web image sets `HOST=0.0.0.0`, `PORT=3000` and `NODE_ENV=production`. Backend secrets must never enter `VITE_*` variables, build arguments or browser imports. Register the exact Google callback `https://app.example.com/api/auth/callback/google`; automated email/password fixtures do not verify real OAuth.
 

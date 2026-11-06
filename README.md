@@ -110,8 +110,8 @@ Backend variables are server runtime configuration, including for the integrated
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth application configuration and secret |
 | `NODE_ENV` | Runtime mode; defaults to development |
 | `PORT` | Standalone API port; defaults to 3001 |
-| `EMAIL_TRANSPORT` | `console` (default outside production) logs emails; `resend` (production default) sends them |
-| `EMAIL_FROM`, `RESEND_API_KEY` | Sender such as `App <no-reply@your-domain>` and Resend API key; key is a secret |
+| `EMAIL_TRANSPORT` | `console` (default outside production) logs emails; `smtp` (production default) sends them |
+| `EMAIL_FROM`, `SMTP_URL` | Sender such as `App <no-reply@your-domain>` and `smtps://user:password@host:465` (or `smtp://…:587` with STARTTLS); the URL is a secret |
 | `LOG_LEVEL` | `debug`, `info` (default), `warn` or `error` |
 | `OTEL_SERVICE_NAME` | `service.name` attached to exported logs; defaults to `elysium` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` or `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` | Optional OTLP/HTTP log export; the generic endpoint gets `/v1/logs` appended |
@@ -123,7 +123,7 @@ Production non-local auth/application origins require HTTPS. `VITE_SITE_URL` is 
 
 Email/password accounts must verify their address before they can log in. Sign-up sends a verification link, logging in with an unverified address sends a new one, and opening the link signs the user in. `/forgot-password` sends a reset link to `/reset-password`; a reset revokes the user's other sessions. Links expire after one hour. Google accounts arrive verified.
 
-In development, `EMAIL_TRANSPORT=console` prints each message and its link in the server log. In production, verify a sending domain in [Resend](https://resend.com/domains), create an API key with sending access, then set `EMAIL_FROM` and `RESEND_API_KEY`; startup fails if they are missing. Messages are sent after the auth response and delivery failures are logged as errors. Templates live in `packages/backend/src/modules/auth/emails.ts`.
+In development, `EMAIL_TRANSPORT=console` prints each message and its link in the server log. In production, use any SMTP provider: verify your sending domain with it, then set `EMAIL_FROM` and `SMTP_URL` (URL-encode special characters in the user and password); startup fails if they are missing. For local testing against a real mailbox, a catcher such as Mailpit on `smtp://localhost:1025` works too. Messages are sent after the auth response and delivery failures are logged as errors. Templates live in `packages/backend/src/modules/auth/emails.ts`.
 
 `/account` lets a signed-in user rename themselves, change their password (signing out other sessions) and delete their account. Deletion sends a confirmation link; opening it deletes the user, sessions and posts.
 

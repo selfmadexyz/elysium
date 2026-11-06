@@ -18,9 +18,9 @@ const envSchema = Type.Object(
       default: 'info',
     }),
     OTEL_SERVICE_NAME: Type.String({ minLength: 1, default: 'elysium' }),
-    EMAIL_TRANSPORT: Type.Optional(Type.Union([Type.Literal('resend'), Type.Literal('console')])),
+    EMAIL_TRANSPORT: Type.Optional(Type.Union([Type.Literal('smtp'), Type.Literal('console')])),
     EMAIL_FROM: Type.Optional(Type.String({ minLength: 3 })),
-    RESEND_API_KEY: Type.Optional(Type.String({ minLength: 1 })),
+    SMTP_URL: Type.Optional(Type.String({ minLength: 1 })),
     OTEL_EXPORTER_OTLP_ENDPOINT: Type.Optional(Type.String({ minLength: 1 })),
     OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: Type.Optional(Type.String({ minLength: 1 })),
     OTEL_EXPORTER_OTLP_HEADERS: Type.Optional(Type.String({ minLength: 1 })),
@@ -116,9 +116,12 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
   const appUrl = parseHttpUrl('APP_URL', decoded.APP_URL, decoded.NODE_ENV);
   const betterAuthUrl = parseHttpUrl('BETTER_AUTH_URL', decoded.BETTER_AUTH_URL, decoded.NODE_ENV);
 
-  const emailTransport = decoded.EMAIL_TRANSPORT ?? (decoded.NODE_ENV === 'production' ? 'resend' : 'console');
-  if (emailTransport === 'resend' && (!decoded.RESEND_API_KEY || !decoded.EMAIL_FROM)) {
-    throw new Error('RESEND_API_KEY and EMAIL_FROM are required when EMAIL_TRANSPORT is resend');
+  const emailTransport = decoded.EMAIL_TRANSPORT ?? (decoded.NODE_ENV === 'production' ? 'smtp' : 'console');
+  if (emailTransport === 'smtp' && (!decoded.SMTP_URL || !decoded.EMAIL_FROM)) {
+    throw new Error('SMTP_URL and EMAIL_FROM are required when EMAIL_TRANSPORT is smtp');
+  }
+  if (decoded.SMTP_URL && !/^smtps?:$/.test(new URL(decoded.SMTP_URL, 'invalid:/').protocol)) {
+    throw new Error('SMTP_URL must use smtp:// or smtps://');
   }
 
   return {

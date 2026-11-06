@@ -86,7 +86,7 @@ describe('parseEnv', () => {
     expect(parseEnv(validEnv).EMAIL_TRANSPORT).toBe('console');
   });
 
-  it('requires Resend credentials in production unless another transport is chosen', () => {
+  it('requires SMTP settings in production unless console is chosen, so verification emails are not silently dropped', () => {
     const production = {
       ...validEnv,
       NODE_ENV: 'production',
@@ -94,10 +94,20 @@ describe('parseEnv', () => {
       BETTER_AUTH_URL: 'https://app.example.com',
     };
 
-    expect(() => parseEnv(production)).toThrow('RESEND_API_KEY and EMAIL_FROM are required');
+    expect(() => parseEnv(production)).toThrow('SMTP_URL and EMAIL_FROM are required');
     expect(
-      parseEnv({ ...production, RESEND_API_KEY: 're_key', EMAIL_FROM: 'App <no-reply@example.com>' }).EMAIL_TRANSPORT,
-    ).toBe('resend');
+      parseEnv({ ...production, SMTP_URL: 'smtps://user:pass@smtp.example.com:465', EMAIL_FROM: 'App <a@example.com>' })
+        .EMAIL_TRANSPORT,
+    ).toBe('smtp');
     expect(parseEnv({ ...production, EMAIL_TRANSPORT: 'console' }).EMAIL_TRANSPORT).toBe('console');
+  });
+
+  it('rejects a non-SMTP URL, so an HTTP API key pasted by mistake fails at startup', () => {
+    expect(() => parseEnv({ ...validEnv, SMTP_URL: 'https://api.example.com' })).toThrow(
+      'SMTP_URL must use smtp:// or smtps://',
+    );
+    expect(parseEnv({ ...validEnv, SMTP_URL: 'smtp://user:pass@localhost:1025' }).SMTP_URL).toBe(
+      'smtp://user:pass@localhost:1025',
+    );
   });
 });
