@@ -81,4 +81,39 @@ describe('parseEnv', () => {
     ).toBe('resend');
     expect(parseEnv({ ...production, EMAIL_TRANSPORT: 'console' }).EMAIL_TRANSPORT).toBe('console');
   });
+
+  it('falls back to the Render public URL for app origins, so a first deploy works before a domain exists', () => {
+    const { APP_URL: _app, BETTER_AUTH_URL: _auth, ...withoutOrigins } = validEnv;
+    const parsed = parseEnv({
+      ...withoutOrigins,
+      NODE_ENV: 'production',
+      EMAIL_TRANSPORT: 'console',
+      RENDER_EXTERNAL_URL: 'https://elysium.onrender.com',
+    });
+
+    expect(parsed.APP_URL).toBe('https://elysium.onrender.com');
+    expect(parsed.BETTER_AUTH_URL).toBe('https://elysium.onrender.com');
+  });
+
+  it('keeps explicit origins over the Render URL, so a custom domain is not overridden', () => {
+    const parsed = parseEnv({
+      ...validEnv,
+      APP_URL: 'http://localhost:3000',
+      RENDER_EXTERNAL_URL: 'https://elysium.onrender.com',
+    });
+
+    expect(parsed.APP_URL).toBe('http://localhost:3000');
+  });
+
+  it('treats empty values as unset, so blank dashboard fields do not fail startup', () => {
+    const parsed = parseEnv({
+      ...validEnv,
+      BETTER_STACK_SOURCE_TOKEN: '',
+      BETTER_STACK_INGESTING_HOST: '',
+      RESEND_API_KEY: '',
+    });
+
+    expect(parsed.BETTER_STACK_LOGS_URL).toBeUndefined();
+    expect(parsed.BETTER_STACK_SOURCE_TOKEN).toBeUndefined();
+  });
 });

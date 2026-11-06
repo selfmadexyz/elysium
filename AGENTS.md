@@ -112,5 +112,6 @@ Run what the change touches, and report failures as they are:
 
 - Pushes to `main` publish `ghcr.io/<owner>/elysium-web` and `elysium-migrate` (`packages/web/Dockerfile` targets `runtime` and `migrate`) after every CI job and the image smoke test pass (`.github/workflows/docker.yml`). Publishing requires the `PUBLIC_APP_URL` repository variable.
 - The `migrate` image runs `db:migrate`; a schema change must work for the currently running web image until the new one rolls out.
-- No staging or production target is configured in this repo: do not add deploy hooks, credentials or release promotion.
-- TODO(owner): `packages/web/vercel.json` and the `VERCEL` branch in `vite.config.ts` exist; say whether Vercel is a real deploy target.
+- Production runs on Render from `render.yaml` (web service + PostgreSQL, Frankfurt); see [docs/deployment.md](docs/deployment.md#render). Render deploys `main` after checks pass and runs `/app/migrate/migrate.mjs` before switching traffic. Change Render resources in `render.yaml`, never in Terraform. Never commit credentials; secrets are `sync: false`.
+- Better Stack (and later Cloudflare) are managed with Terraform in `infra/`.
+- Vercel is being retired: `packages/web/vercel.json` and the `VERCEL` branch in `vite.config.ts` stay until Render serves production, then get removed.

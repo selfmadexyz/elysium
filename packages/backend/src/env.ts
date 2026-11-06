@@ -71,7 +71,12 @@ const parseIngestingHost = (value: string) => {
 };
 
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const candidate = Value.Convert(envSchema, Value.Default(envSchema, structuredClone(source)));
+  const values = Object.fromEntries(Object.entries(source).filter(([, value]) => value !== undefined && value !== ''));
+  if (values.RENDER_EXTERNAL_URL) {
+    values.APP_URL ??= values.RENDER_EXTERNAL_URL;
+    values.BETTER_AUTH_URL ??= values.RENDER_EXTERNAL_URL;
+  }
+  const candidate = Value.Convert(envSchema, Value.Default(envSchema, values));
   Value.Clean(envSchema, candidate);
 
   const errors = Array.from(compiledEnvSchema.Errors(candidate));
