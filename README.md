@@ -68,6 +68,7 @@ Browser → TanStack Start pages + /api adapter → Elysia → Drizzle → Postg
 | `packages/backend/src/modules/` | HTTP routes (`index.ts`), business/database services and models |
 | `packages/backend/drizzle/` | Committed schema migrations |
 | `packages/contracts/src/` | Browser-safe TypeBox request/response schemas and DTOs |
+| `infra/` | Terraform for Better Stack (and later Cloudflare); see [infra/README.md](infra/README.md) |
 
 Start owns documents, routing, rendering, hydration and web-specific session adapters. Elysia owns API authentication, authorization, validation, business rules and persistence. Eden shares the API contract with React; runtime validation and authorization still happen on the server. The posts services derive ownership from the session for every read and mutation.
 
