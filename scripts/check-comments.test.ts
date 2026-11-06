@@ -16,10 +16,10 @@ describe('added comment guard', () => {
     expect(findings).toEqual([{ file: 'src/a.ts', line: 4, blocked: true, text: `// ${reviewMarker} remove this` }]);
   });
 
-  test('allows specs, seeds, biome directives and URL strings', () => {
+  test('allows specs, seeds, tool directives and URL strings', () => {
     expect(
       inspectDiff(
-        '+++ b/src/a.ts\n@@ -0,0 +1,4 @@\n+// spec: invariant\n+// seed: fixture\n+// biome-ignore lint: reason\n+const url = "https://example.com";',
+        '+++ b/src/a.ts\n@@ -0,0 +1,6 @@\n+// spec: invariant\n+// seed: fixture\n+// biome-ignore lint: reason\n+// eslint-disable-next-line\n+// @ts-expect-error untyped\n+const url = "https://example.com";',
       ),
     ).toEqual([]);
   });
@@ -72,7 +72,7 @@ test('CLI compares committed refs independently of working tree and fails on add
     writeFileSync(join(directory, 'a.ts'), 'export const a = 1;\n');
     const committed = check(['--base', base, '--head', head]);
     expect(committed.status).toBe(1);
-    expect(committed.stdout).toContain('a.ts:2: ERROR');
+    expect(committed.stdout).toContain('::error file=a.ts,line=2::');
     expect(check(['--base', base]).status).toBe(0);
     expect(check(['--base', 'missing-ref']).status).toBe(1);
   } finally {

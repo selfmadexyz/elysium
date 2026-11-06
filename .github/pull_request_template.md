@@ -1,15 +1,11 @@
-## What changes
-
-<!-- The concrete problem and resulting behavior. -->
-
 ## Testing
 
-<!-- Commands actually run and their results; regression evidence; local UI demo/screenshot; pending checks. -->
+<!-- Commands run and their result, demo, what is left to CI. -->
 
 ## Risk
 
-<!-- Low/high from REVIEW.md; paths that set the tier; what could break. High requires a human diff review. -->
+<!-- Tier (REVIEW.md → Risk tiers), the paths that set it, what could break. -->
 
 ## How to revert
 
-<!-- Revert the squash commit, or explain migration/data/deployment compatibility limits. -->
+<!-- `git revert` of the squash commit, a flag to turn off, or why a plain revert is not enough (applied migration, field a deployed client still reads). -->
