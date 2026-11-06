@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 const SOURCE_FILE = /\.(?:[cm]?[jt]sx?)$/;
 const SCANNED_FILE = /\.(?:[cm]?[jt]sx?|css|sh|ya?ml)$|^\.githooks\//;
 const PONYTAIL = /(?:\/\/|\/\*+|^\s*\*+|#)\s*ponytail:/i;
-const ALLOWED = /^\s*\/\/ (?:spec:|seed:|biome-ignore )/;
+const ALLOWED = /^\s*\/\/ (?:spec:|seed:|biome-ignore |eslint-disable|@ts-expect-error)/;
 
 export function inspectDiff(diff: string) {
   const findings: { file: string; line: number; blocked: boolean; text: string }[] = [];
@@ -67,11 +67,13 @@ if (import.meta.main) {
     const findings = inspectDiff(diff);
     for (const finding of findings) {
       console.log(
-        `${finding.file}:${finding.line}: ${finding.blocked ? 'ERROR: remove ponytail review marker' : 'Review comment: keep only useful invariants, units or quirks'}: ${finding.text}`,
+        finding.blocked
+          ? `::error file=${finding.file},line=${finding.line}::ponytail: comments are dropped before commit: ${finding.text}`
+          : `::warning file=${finding.file},line=${finding.line}::Keep only if it states a unit, invariant, quirk or magic value: ${finding.text}`,
       );
     }
     const blocked = findings.filter((finding) => finding.blocked).length;
-    console.log(`${findings.length - blocked} comment(s) to review, ${blocked} blocked marker(s)`);
+    console.log(`${findings.length - blocked} added comment(s) to justify, ${blocked} ponytail: comment(s) to drop`);
     if (blocked) process.exitCode = 1;
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);

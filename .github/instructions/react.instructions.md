@@ -6,10 +6,17 @@ paths:
 
 # React and SSR
 
-- Server data belongs in TanStack Query hooks, not duplicated component state or ad hoc effect fetches. Query keys include every input that changes the response; keep invalidation aligned with the owning hook's key.
-- Preserve TanStack Start file routes in `src/routes/` and the router factory in `src/router.tsx`. Do not edit generated `src/routeTree.gen.ts` by hand. Use route loaders for critical data where appropriate; show pending, empty and failure states.
-- Construct router, QueryClient and session context per SSR request. Browser-only APIs must not execute on the server. Auth redirects supplement server authorization.
-- Derive values during rendering instead of synchronizing redundant state with effects. Effects synchronize external systems. Stable list keys come from data.
-- Reuse `src/components/ui/` Base UI patterns, `cn`, existing Hugeicons imports and TanStack Form. Keep labels, keyboard behavior and dialog focus handling intact.
-- Do not introduce a new cache, state library, UI kit or dependency without a task-specific reason. React Compiler is not configured: do not remove memoization by assuming it is.
-- Test visible behavior by role/label. A query/auth change needs isolation, error and invalidation coverage proportionate to its behavior. Inspect UI changes in a browser and report if unavailable.
+- Server state lives in TanStack Query only: never copied into `useState`, never fetched in `useEffect`. Hooks in `src/hooks/` own the query; export its `queryOptions` when a route loader needs it.
+- Every input that changes the response is in the query key (`['posts', { page, pageSize }]`); a mutation invalidates the owning key prefix.
+- Derive during render; `useEffect` only to sync with something outside React.
+- Conditional rendering uses a ternary or an explicit boolean, never `count && …`.
+- List keys come from data (`post.id`), never the index.
+- React Compiler is not enabled: keep existing `useMemo`/`useCallback`/`memo` and add one only for a measured cost.
+- `type`, not `interface` (the `Register` module augmentation in `src/router.tsx` is the exception).
+- `toSorted`/`toReversed` over mutating `sort`/`reverse`.
+- Any new dependency is asked first. Reuse `src/components/ui/` (Base UI), `cn`, Hugeicons and TanStack Form before adding anything.
+- Routes are files in `src/routes/`; `src/routeTree.gen.ts` is generated, never edited. A new public page that should be prerendered is added to `pages` in `vite.config.ts`; a private page goes under `_authenticated`.
+- Router, `QueryClient` and session context are built per request in `getRouter()`; browser-only APIs never run during SSR.
+- A page that reads server data shows its loading, empty and error states.
+- UI copy states the state or the action: titles ≤ 5 words, descriptions one short clause, no hedging.
+- Tests use Vitest, query by role or label and assert what the user sees.

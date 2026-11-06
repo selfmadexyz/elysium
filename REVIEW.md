@@ -1,31 +1,56 @@
 # Review instructions
 
-Read [AGENTS.md](AGENTS.md) and the applicable files in `.github/instructions/` before reviewing. Findings need an observable failure, a concrete scenario and `file:line` evidence; check the implementation rather than inferring behavior from a name.
+The repo rules below are the review checklist: a change that breaks one is a finding.
 
-## Important
+@AGENTS.md
+@.github/instructions/react.instructions.md
+@.github/instructions/backend.instructions.md
 
-Important findings break user-visible behavior, expose private data/secrets, bypass authorization, contaminate one request with another request's session/cache, lose data or prevent a safe rollback. Missing negative authorization tests or regression coverage that would allow such a failure are Important too.
+## What Important means here
 
-Naming, helper preferences and stylistic alternatives are Nits. Report at most five Nits. Report a comment-rule violation once per class with all locations, outside that cap. Do not repeat lint/type errors already reported by CI; do report a broken or bypassed check.
+Important: a finding that breaks behavior, loses or misreports data or money, leaks one user's or tenant's data to another, or blocks a rollback. In this repo, for example:
+- a posts query, update or delete without the session-derived `authorId` predicate, or a create that takes `authorId` from the request;
+- a private route without the `auth: true` macro, or one that answers 403 / a distinct body for another user's post instead of 404;
+- a `QueryClient`, router or session shared across SSR requests, or a session-dependent response served without `Cache-Control: no-store`;
+- a renewed session `set-cookie` dropped by the auth middleware or `getSession`, logging users out;
+- a migration that breaks the running web image, rewrites an applied migration, or a backend secret reaching a browser bundle, `VITE_*` variable or log.
+
+A test gap that lets one of those through is Important too: a scope or permission rule with no negative case, a filter test that doesn't assert what the boundary received, an expected value taken from the code under test, a fix shipped without a test that fails without it. A missing Required test keeps its default severity; naming, break-check and role/label rules are Nit.
+
+Everything about naming, helpers or style is Nit at most. A comment that breaks "Comments — hard rule" in AGENTS.md is not a Nit: it keeps its default severity, outside the Nit cap. Report the class once with every location (`file:line` each) in the first review so it is fixed in one commit.
 
 ## Risk tiers
 
-Risk follows changed paths and behavior, not diff size. Any high-risk path makes the PR high risk.
+The tier comes from the files a PR touches, never from its size or author. One high path makes the PR high.
 
-High (deep review; a human reads the diff before merging):
-- Auth/session/access: `packages/backend/src/modules/auth/**`, `packages/web/src/lib/auth.ts`, `packages/web/src/lib/auth-server.ts`, `packages/web/src/routes/_authenticated.tsx`, sign-in/sign-up route guards, and any newly added permission boundary.
-- Server request isolation and API/CORS: `packages/web/src/routes/api.$.ts`, `packages/web/src/router.tsx`, `packages/backend/src/index.ts`.
-- Data/schema/migrations: `packages/backend/src/database/**`, `packages/backend/src/lib/db.ts`, `packages/backend/drizzle/**`, `packages/backend/drizzle.config.*`, destructive writes and changes to ownership filters.
-- Environment, caching and secrets: `packages/backend/src/env.ts`, env examples, `packages/web/vite.config.ts`, `packages/web/server/**`, `packages/web/vercel.json`, and changes to cache/cookie policy anywhere.
-- CI, hooks, supply chain and deployment: `.github/workflows/**`, `.githooks/**`, `scripts/**`, Dockerfiles, dependency declarations/resolutions and runtime version pins.
+High: review deeply, and a human reads the diff before merging.
+- Auth and access: `packages/backend/src/modules/auth/**`, `packages/backend/src/modules/posts/service.ts`, `packages/backend/src/modules/posts/index.ts`, `packages/web/src/lib/auth.ts`, `packages/web/src/lib/auth-server.ts`, `packages/web/src/routes/_authenticated*.tsx`, `packages/web/src/routes/sign-in.tsx`, `packages/web/src/routes/sign-up.tsx`.
+- Request isolation, API surface and CORS: `packages/web/src/routes/api.$.ts`, `packages/web/src/router.tsx`, `packages/backend/src/app.ts`, `packages/backend/src/index.ts`, `packages/backend/src/routes/**`.
+- What a deployed client reads: `packages/contracts/**`, `packages/backend/src/modules/*/model.ts`, `packages/backend/src/lib/models.ts`, `packages/backend/src/lib/errors.ts`.
+- Migrations and data: `packages/backend/src/database/**`, `packages/backend/src/lib/db.ts`, `packages/backend/drizzle/**`, `packages/backend/drizzle.config.ts`.
+- Runtime env, caching and secrets: `packages/backend/src/env.ts`, `packages/backend/.env.example`, `packages/web/vite.config.ts`, `packages/web/vercel.json`, `compose.yaml`.
+- CI, hooks, supply chain and deploy: `.github/workflows/**`, `.github/dependabot.yml`, `.githooks/**`, `scripts/**`, `packages/web/Dockerfile`, `.dockerignore`, `.bun-version`, every `package.json` and `bun.lock` resolution change.
 
-Low: remaining changes that do not introduce one of the behaviors above.
+Low: everything else.
 
-## Convergent reviews
+## Re-reviews
 
-- Report a bug class once, including every location in the PR.
-- Label pre-existing findings as such and place unrelated work in `BACKLOG.md`.
-- On re-review, inspect lines changed since the previous review; older lines may be raised only for a new Important finding.
-- Do not repeat findings already fixed or answered. Re-check a response against the code before escalating.
-- Ignore generated migration metadata and routine lockfile churn, but inspect new dependencies, non-registry sources and integrity changes without a version change.
-- Before declaring ready, distinguish checks actually run from checks still pending. A review approval does not override a failing required check or the human review expectation on high-risk paths.
+A review must converge, not find one more old bug per push.
+- Report a bug class once, with every location, so it is fixed in one commit.
+- Mark a finding on code this PR did not change as Pre-existing.
+- On a re-review, report only on lines changed since the last review, unless the finding is Important.
+- Do not repeat a finding the author already fixed or answered in a thread.
+
+## Evidence
+
+A claim about behavior cites file:line, not an inference from a name.
+
+## Cap the nits
+
+Report at most five Nits per review. Comment-rule violations don't count toward the five.
+
+## Do not report
+
+- What CI already enforces: lint and format, type errors, high and critical audit advisories in production dependencies
+- Generated files: `packages/web/src/routeTree.gen.ts`, `packages/backend/drizzle/meta/**`
+- Lockfile churn. Still report a new package, a resolution source that is not the registry (git, tarball, URL), or an integrity change without a version change.

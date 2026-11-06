@@ -39,3 +39,4 @@ CLAUDE.local.md
 .omc/
 test-results/
 playwright-report/
+e2e/*.local.spec.ts

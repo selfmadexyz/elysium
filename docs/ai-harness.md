@@ -14,6 +14,7 @@ Adapted from the local `railnet-app` process for Elysium's three-package Bun sta
 | `REVIEW.md` | Important findings, high/low risk and convergent re-reviews |
 | `.agents/skills/{ship,watch-pr,design-critic}/SKILL.md` | Versioned shipping, review-follow-up and independent design workflows |
 | `.claude/skills/` | Relative links to the canonical skills |
+| `.claude/settings.json` | Denies Claude reads of `.env` files and disables its co-author trailer |
 | `CLAUDE.local.md` | Ignored personal preferences and local paths |
 | `BACKLOG.md` | Confirmed findings outside the active change |
 

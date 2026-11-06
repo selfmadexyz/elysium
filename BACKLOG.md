@@ -2,6 +2,10 @@
 
 Record confirmed work outside the current change with context and a concrete next action. Do not turn speculative review suggestions into obligations.
 
+## Now
+
+## Next
+
 ## Later
 
 - Configure the chosen GitHub reviewer integrations and required status checks on `main`; instruction files alone do not activate them. See `docs/ai-harness.md`.

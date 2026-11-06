@@ -1,54 +1,116 @@
 # Elysium — agent instructions
 
-Full-stack starter: Bun workspaces, React 19, TanStack Router/Query/Form, Vite + Nitro SSR, Elysia, Better Auth, Drizzle and PostgreSQL. This file is shared by Codex, Claude (through `CLAUDE.md`) and GitHub reviewers. Personal paths and preferences belong in gitignored `CLAUDE.local.md`.
+Full-stack Bun starter: a React 19 / TanStack Start app rendered by Nitro, with an Elysia `/api` served from the same process, Better Auth sessions (email + Google) and PostgreSQL through Drizzle. It ships one feature, private per-user posts, and publishes two Docker images (web runtime and one-shot migrate). Read by Claude Code (through `CLAUDE.md`), Copilot code review and other agents. Personal setup (local paths, worktrees, preferences) goes in a gitignored `CLAUDE.local.md`.
 
-## Architecture
+## Comments — hard rule
 
-| Package | Alias | Responsibility |
-| --- | --- | --- |
-| `packages/backend` | `@backend/*` | Elysia `/api`, auth, TypeBox contracts, Drizzle schema and services |
-| `packages/contracts` | `@elysium/contracts/*` | Browser-safe TypeBox API request/response schemas |
-| `packages/web` | `@frontend/*` | React pages, TanStack Start file routes, Query hooks, Nitro SSR |
+**Zero comments by default.** Every comment you add is a defect unless it says what the code can't: units/encoding, an invariant the type doesn't enforce, a protocol/external quirk, a magic value. One-line doc comment on exported package boundaries only when the type hides a unit or invariant.
 
-Data flows from PostgreSQL → Drizzle service → Elysia route + TypeBox → Eden client → TanStack Query → React. Backend feature modules use `index.ts` (HTTP), `service.ts` (queries/business logic) and `model.ts` (validation/types).
+Never write a comment that:
+- narrates the change, the discussion or a review round ("now uses X", "moved from Y", "fixed per review"): that goes in the commit;
+- restates the next line, labels a section or explains a name: rename instead;
+- sits in a test to repeat what the title or the assertion already says;
+- starts with `ponytail:` (dropped before commit).
 
-`packages/web/src/routes/api.$.ts` dispatches `/api` requests to Elysia. TanStack Start server functions in `src/lib/auth-server.ts` read the current request's session; route guards consume it. `src/router.tsx` constructs a router and QueryClient per invocation. Preserve request isolation: never share a user's session or server query cache across requests. Routes live in `src/routes/`; `src/routeTree.gen.ts` is generated and must not be edited by hand.
+`// spec:`, `// seed:` and tool directives (`biome-ignore`, `@ts-expect-error`) are allowed when justified.
 
-## Backend and auth
+Before every commit, and before every push that answers a review: list the comments you added and delete each one that fails the rule. `bun run lint:comments` lists them (also run by the pre-push hook and as PR annotations in CI) and fails on `ponytail:`.
 
-- Validate input at the HTTP boundary and keep the Eden contract typed. Keep DB queries in services and preserve status/error semantics in `src/lib/errors.ts` and the global error handler.
-- Authentication belongs on the server; a client redirect is not authorization. When adding an ownership or permission boundary, derive identity from the session and test a denied case as well as an allowed case. Posts are private to their session-derived author. Preserve author predicates for list/get/update/delete and assignment on create; test another user cannot access or change them.
-- Session-dependent responses must not become public or shared-cache entries. Preserve cookie, CORS and trusted-origin behavior deliberately.
-- Secrets stay server-side. Update `packages/backend/.env.example` and `src/env.ts` together when changing env requirements. Do not put backend secrets in browser imports, Vite build arguments or logs.
-- Schema changes require generated Drizzle migrations in `packages/backend/drizzle/`. Do not rewrite an applied migration or run `db:push` against a shared database. Explain data/backward compatibility and rollback limits.
+## Packages / layout
+
+| Package | Alias | Dev port | What |
+| --- | --- | --- | --- |
+| `packages/web` | `@frontend/*` | 3000 (`vite dev`) | TanStack Start file routes, React pages, Query hooks, Nitro SSR; `/api/*` is dispatched to Elysia by `src/routes/api.$.ts` |
+| `packages/backend` | `@backend/*` | 3001 (`dev:backend`, standalone) | Elysia app, Better Auth, Drizzle schema/migrations, feature services |
+| `packages/contracts` | `@elysium/contracts/*` | — | Browser-safe TypeBox request/response schemas |
+| `e2e/` | — | 3100 (built Nitro server) | Playwright smoke and authenticated flows |
+| `scripts/`, `.githooks/` | — | — | Comment check, pre-push hook, image smoke |
+
+Stack: Bun 1.4.4 workspaces, TypeScript, React 19, TanStack Start/Router/Query/Form, Vite + Nitro, Tailwind + Base UI (`src/components/ui/`), Elysia + TypeBox + Eden, Better Auth, Drizzle + PostgreSQL 17, Biome, Bun test (backend), Vitest (web), Playwright (e2e).
+
+## Data
+
+PostgreSQL → Drizzle service (`modules/<feature>/service.ts`) → Elysia route + TypeBox (`modules/<feature>/index.ts`) → Eden `treaty<App>` (`web/src/lib/client.ts`) → TanStack Query hook (`web/src/hooks/use-*.ts`) → React.
+
+- PostgreSQL is the source of truth; the browser holds only the Query cache. A mutation invalidates the owning query key prefix (`['posts']`) on success, never patches local copies.
+- Every API response is `Cache-Control: no-store` (`backend/src/app.ts`); only static assets get public cache headers (`web/vite.config.ts` `routeRules`). A session-dependent response never gets a public or shared cache entry.
+- `getRouter()` (`web/src/router.tsx`) builds a new router and `QueryClient` per invocation; never hoist either to module scope or share a session or query cache across requests.
+- Services throw `ServerError` subclasses (`backend/src/lib/errors.ts`); the global `onError` in `app.ts` maps them to `{ error, message }` and hides 5xx messages and validation details in production. Never return an ad hoc error body from a route.
+- Hooks turn an Eden error into `throw new Error(response.error.value.message)` and treat missing `data` as an error; keep that shape so pages render their error state.
+- Session reads go through Better Auth with `returnHeaders: true` and forward renewed `set-cookie` headers (`modules/auth/middleware.ts`, `web/src/lib/auth-server.ts`); a new session read keeps that forwarding.
+
+### Type contracts
+
+- API request/response shapes live in `packages/contracts/src/<feature>.ts` as TypeBox schemas plus `Static` types; the backend registers them as Elysia models in `model.ts`, the web imports the types from `@elysium/contracts/*`. Contracts import nothing from backend or web.
+- Backend-only validation (query params, pagination) lives in the feature's `model.ts`; HTTP wiring in `index.ts`; queries and business rules in `service.ts`.
+- Every route declares `response` per status, with errors as the shared `'error'` model (`backend/src/lib/models.ts`). The Eden client is typed by the exported `App` type: do not widen a route to `any` or bypass it with raw `fetch`.
+- DB shapes live in `backend/src/database/schema.ts`. A schema change ships a generated migration (`bun run db:generate`) in `packages/backend/drizzle/`; never edit an applied migration or run `db:push` against a shared database. The PR says how the change behaves with old rows and whether a revert is safe.
+- Env vars are declared in `backend/src/env.ts` (validated, `additionalProperties: false`) and `packages/backend/.env.example` together. Backend secrets never reach a browser import, a `VITE_*` variable or a log line.
+
+## Product rules
+
+- Public pages: `/`, `/get-started` (prerendered, allowlist in `web/vite.config.ts` `pages`), `/sign-in`, `/sign-up`, `/robots.txt`, `/sitemap.xml`. Private pages live under the `_authenticated` layout (`/posts`, client-rendered with `ssr: false`, `noindex`).
+- The `_authenticated` redirect is UX only; authorization is the server's. Every private API route uses the `auth: true` macro and reads identity from the resolved `user`, never from a body, param or query.
+- Posts are private to their author. Every list/get/update/delete query keeps the `authorId` predicate next to the ID; create assigns `authorId` from the session. Request contracts never accept an `authorId`.
+- Another user's post answers 404, like a missing one; never 403 or any response that reveals it exists.
+- List pagination: `limit` 1–100, default 20, `offset` ≥ 0 (`modules/posts/model.ts`, `service.ts`), newest first by `id`. The web asks for `POSTS_PAGE_SIZE + 1` rows to know whether a next page exists (`hooks/use-posts.ts`).
+- Vocabulary: "post" (title ≤ 255 chars, body ≤ 20 000 chars, from `contracts/src/posts.ts`), "author" (the session user who owns it).
+- TODO(owner): there are no roles, sharing or admin access; define them before adding any access path other than "author only".
 
 ## React
 
-Read [.github/instructions/react.instructions.md](.github/instructions/react.instructions.md) for web changes and [.github/instructions/backend.instructions.md](.github/instructions/backend.instructions.md) for API changes. Keep installed component and form patterns; inspect existing Base UI components before adding another implementation or dependency. Do not assume React Compiler, i18n or external state stores are installed. Playwright smoke coverage lives in `e2e/` and runs against the built Nitro app.
+Path-scoped rules live in [.github/instructions/react.instructions.md](.github/instructions/react.instructions.md) (`packages/web/**`) and [.github/instructions/backend.instructions.md](.github/instructions/backend.instructions.md) (`packages/backend/**`, `packages/contracts/**`). Read the one matching the files you touch.
 
-## Comments
+## Code style
 
-No comments by default. Keep a comment only when it states an otherwise invisible unit, invariant, external quirk or magic value. Do not narrate a change, restate the next line, label a code section or repeat a test title. `// spec:`, `// seed:` and justified tool directives such as `biome-ignore` are allowed. Remove every `ponytail:` review annotation before shipping.
+- Full descriptive names (`event`, `index`, `response`), including callback params; `i`/`j`/`k` only in tight numeric loops.
+- Helpers: inline by default, even if longer; no generic mini helpers (`sum(fn)`, `isDefined`), write the explicit loop with one named line per value. Never export "for later": export only what another file imports, delete code with no caller.
+- More than two parameters, or two or more callbacks: one destructured object typed by a named `type XArgs`, called with named fields (`startRun({ key, amount, onSuccess })`). A positional signature is converted when touched.
+- Duplicated code is fine, a duplicated rule is not. A constant, limit, value list, label map or parse/format pair lives in one place; extract on the third use or when two places must stay identical. Grep for the existing guard or formatter before writing one.
 
-Run `bun run lint:comments` and read each reported addition; the script flags comments for human judgment and rejects `ponytail:` annotations. A green check alone does not justify prose.
+## Testing
+
+- Required: backend services and routes (ownership, status codes, error mapping), the auth middleware and session forwarding, env parsing, web modules with logic (`src/lib/*`, hooks that derive data such as pagination), harness scripts (`scripts/*.test.ts`), and the e2e smoke suite. Not required: pure UI, trivial wrappers, nice-to-have features, copy.
+- A test names the rule it guards and what breaking it causes ("X, so Y").
+- Expected values come from the rule's source (spec, shared constant, a case computed by hand), never from running or reading the code under test. Literals only: no snapshot, no loop or formula that recomputes the result.
+- Before keeping a test, break the line it guards and watch it fail; a test that stays green is deleted, not kept for coverage. Applies to tests added or touched.
+- A test that would still pass if the code under test returned nothing (`undefined`, `[]`, `null`) or did nothing checks nothing: assert the value or the side effect. An expected empty result or error is tested next to a case where the result is not empty.
+- A function over the linter's cognitive complexity warning is split or simplified when touched, not left for later.
+- Mock only boundaries (DB, external APIs, auth, HTTP), and when the rule is a filter (user, org, role, tenant) assert what the boundary received (the compiled query params, the request's filter and variables).
+- Every scope or permission rule has a negative case: another user, another org, a lower role.
+- UI tests query by role or label and assert what the user sees.
+- Backend DB tests run only with `RUN_DATABASE_TESTS=1` against a database named exactly `elysium_test` (`backend/test/setup.ts`); e2e uses `E2E_DATABASE_URL` (`elysium_test` or `elysium_e2e`). Never point a test at a real database or real OAuth credentials.
+
+## Tooling and CI
+
+- After cloning, `bun run hooks` once installs the pre-push hook (`.githooks/`: lint, comment check, typecheck).
+- Install: `bun install --frozen-lockfile` (Bun version pinned in `.bun-version`).
+- `bun run lint` (Biome), `bun run typecheck` (harness, contracts, backend, web), `bun run lint:comments`.
+- `bun run test` (harness + every package); per package `bun run --cwd packages/backend test` (Bun) or `bun run --cwd packages/web test` (Vitest).
+- `bun run build`, then `bun run test:e2e` (Playwright on the built server, needs `bunx playwright install chromium` and a disposable PostgreSQL).
+- CI (`.github/workflows/ci.yml`): `lint` (Biome, added comments on PRs, typecheck, harness tests), `audit` (`bun audit --prod --audit-level=high`), `test-backend` (fresh migrations + DB tests), `test-web` (Vitest + build), `test-e2e`; `images` runs only after all five. Never loosen a check or ignore an advisory to get green.
+- `src/routeTree.gen.ts` and `drizzle/meta/**` are generated: never edit them by hand.
 
 ## Workflow
 
-- Bun is the package manager/runtime; `.bun-version` pins the local and CI version. Install with `bun install --frozen-lockfile` for verification. Run `bun run hooks` once per clone to install the versioned pre-push hook.
-- Keep changes scoped and preserve unrelated working-tree edits. One concern per PR. Conventional commit/PR titles in English (`fix(web): …`, `chore(ci): …`); branches use `codex/` unless the user requests otherwise.
-- Before pushing, check the PR state. Never push to a merged/closed PR's branch; use a new branch from `main` for follow-ups.
-- Repo skills: `$ship` / `/ship`, `$watch-pr` / `/watch-pr`, `$design-critic` / `/design-critic`. Canonical instructions live in `.agents/skills/`, with Claude discovery links in `.claude/skills/`. Honor the authorization already provided by the user; prepare the concrete result before asking for any missing permission.
-- Review guidance and path-based risk tiers live in [REVIEW.md](REVIEW.md). A high-risk change needs a human diff review before merge. Record unrelated findings in [BACKLOG.md](BACKLOG.md), not in this PR's scope.
+- One concern per PR: small diff, short human-readable body; unrelated fixes go in their own PR. Conventional titles and commits (`feat(web): …`, `fix(api): …`, `chore(ci): …`), in English.
+- Never push to a merged PR's branch: check `gh pr view` first, and move follow-ups to a new PR from the default branch.
+- Branches: `feat/…`, `fix/…`, `chore/…`, named after the change.
+- Deferred or unrelated findings go in `BACKLOG.md` (Now / Next / Later / Ideas), not in the PR.
+- Skills: `/ship`, `/watch-pr`, `/design-critic` (canonical in `.agents/skills/`, linked from `.claude/skills/`). Review checklist and risk tiers: [REVIEW.md](REVIEW.md). CI and external setup: [docs/ai-harness.md](docs/ai-harness.md).
 
 ## Done means
 
-1. Run `bun run lint`, `bun run typecheck` and `bun run lint:comments`. Read complete errors; do not hide failures by filtering logs.
-2. Run affected tests first, then the affected package suite (`bun run --cwd packages/backend test` or `bun run --cwd packages/web test`). A behavior fix includes a regression test that demonstrably fails on the broken behavior. Do not manufacture tests for formatting or static documentation changes.
-3. Run `bun run build` when runtime/build inputs change. CI also checks production dependency advisories; do not silently ignore advisories or loosen checks to obtain green results.
-4. Visible UI changes: run the app and inspect the relevant states at narrow and desktop widths. Save a local screenshot or demo when tooling is available; report any missing browser verification. Never claim an unconfigured e2e suite ran.
-   Run `bun run test:e2e` after `bun run build` and Chromium installation (`bunx playwright install chromium`). Smoke coverage checks public HTML/navigation and auth screens; authenticated E2E uses a disposable database. A real Google OAuth exchange still needs provider configuration.
-5. Review the final diff for debug code, secrets, unrelated edits and added comments. Report actual command results and limitations, including pre-existing failures.
+Run what the change touches, and report failures as they are:
+1. `bun run lint` and `bun run typecheck`. Read the typecheck output unfiltered: count errors, never `grep -v` it.
+2. The tests of what changed, then the package's whole test suite. A fix ships with a test that fails without it.
+3. Auth (sign-in/up, session cookies, the `_authenticated` redirect), posts CRUD and ownership, SSR/prerender or the `/api` dispatch touched: `bun run build` then `bun run test:e2e`.
+4. UI touched: run the app and look at it (screenshot) at narrow and desktop widths.
+5. Re-read the diff for leftovers: debug code, helpers with a single call site, and every added comment against "Comments — hard rule" (`bun run lint:comments`).
 
-## CI and publishing
+## Deployment
 
-See [docs/ai-harness.md](docs/ai-harness.md) for the local → PR → CI workflow and external setup. All validation jobs must pass before image publication. Repository files do not activate external reviewer apps or branch protection. Elysium has no configured staging/production release target; do not copy another project's deploy credentials, hooks or release pipeline.
+- Pushes to `main` publish `ghcr.io/<owner>/elysium-web` and `elysium-migrate` (`packages/web/Dockerfile` targets `runtime` and `migrate`) after every CI job and the image smoke test pass (`.github/workflows/docker.yml`). Publishing requires the `PUBLIC_APP_URL` repository variable.
+- The `migrate` image runs `db:migrate`; a schema change must work for the currently running web image until the new one rolls out.
+- No staging or production target is configured in this repo: do not add deploy hooks, credentials or release promotion.
+- TODO(owner): `packages/web/vercel.json` and the `VERCEL` branch in `vite.config.ts` exist; say whether Vercel is a real deploy target.
