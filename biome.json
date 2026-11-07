@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
   "formatter": {
     "indentStyle": "space",
     "lineWidth": 120
@@ -8,16 +8,16 @@
     "includes": [
       "**",
       "!**/routeTree.gen.ts",
-      "!**/node_modules/**",
-      "!**/.git/**",
-      "!**/.output/**",
-      "!**/.nitro/**",
-      "!**/dist/**",
-      "!**/coverage/**",
-      "!**/playwright-report/**",
-      "!**/test-results/**",
-      "!**/drizzle/meta/**",
-      "!.omc/**"
+      "!**/node_modules",
+      "!**/.git",
+      "!**/.output",
+      "!**/.nitro",
+      "!**/dist",
+      "!**/coverage",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/drizzle/meta",
+      "!.omc"
     ]
   },
   "javascript": {
@@ -25,20 +25,35 @@
       "quoteStyle": "single"
     }
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "tailwind": {
+    "attributes": ["className"],
+    "mergeFunctions": ["cn"]
+  },
   "linter": {
     "enabled": true,
     "rules": {
+      "preset": "recommended",
       "nursery": {
-        "useSortedClasses": {
+        "useTailwindSortedClasses": {
           "level": "error",
-          "fix": "safe",
-          "options": {
-            "attributes": ["className"],
-            "functions": ["cn"]
-          }
+          "fix": "safe"
         }
       },
-      "recommended": true,
       "a11y": {
         "noSvgWithoutTitle": "off"
       },
