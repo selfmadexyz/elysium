@@ -24,7 +24,9 @@ ARG VITE_SITE_URL=http://localhost:3000
 ENV NODE_ENV=production
 ENV VITE_SITE_URL=${VITE_SITE_URL}
 
-RUN bun run build:web
+RUN bun run build:web \
+    && bun build packages/backend/src/scripts/migrate.ts --target=bun --outfile=migrate/migrate.mjs \
+    && cp -R packages/backend/drizzle migrate/drizzle
 
 FROM oven/bun:${BUN_VERSION} AS runtime
 WORKDIR /app
@@ -34,6 +36,7 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 
 COPY --from=build --chown=bun:bun /app/packages/web/.output ./packages/web/.output
+COPY --from=build --chown=bun:bun /app/migrate ./migrate
 
 USER bun
 EXPOSE 3000

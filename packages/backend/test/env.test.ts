@@ -39,35 +39,54 @@ describe('parseEnv', () => {
     ).toThrow('APP_URL must use https in production');
   });
 
-  it('builds the Better Stack logs endpoint from the ingesting host', () => {
+  it('appends /v1/logs to the generic OTLP endpoint, so collectors receive logs on the spec path', () => {
+    const parsed = parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_ENDPOINT: 'https://collector.example.com:4318/' });
+
+    expect(parsed.OTLP_LOGS?.url).toBe('https://collector.example.com:4318/v1/logs');
+  });
+
+  it('uses the logs-specific endpoint as is and before the generic one, as the OTLP spec requires', () => {
     const parsed = parseEnv({
       ...validEnv,
-      BETTER_STACK_SOURCE_TOKEN: 'source-token',
-      BETTER_STACK_INGESTING_HOST: 's123.eu-nbg-2.betterstackdata.com',
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'https://generic.example.com',
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: 'https://logs.example.com/ingest',
     });
 
-    expect(parsed.BETTER_STACK_LOGS_URL).toBe('https://s123.eu-nbg-2.betterstackdata.com/v1/logs');
+    expect(parsed.OTLP_LOGS?.url).toBe('https://logs.example.com/ingest');
   });
 
-  it('requires the Better Stack token and host together', () => {
-    expect(() => parseEnv({ ...validEnv, BETTER_STACK_SOURCE_TOKEN: 'source-token' })).toThrow('must be set together');
+  it('decodes OTLP headers, so URL-encoded bearer tokens reach the backend intact', () => {
+    const parsed = parseEnv({
+      ...validEnv,
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'https://collector.example.com',
+      OTEL_EXPORTER_OTLP_HEADERS: 'Authorization=Bearer%20secret-token, x-team = core',
+    });
+
+    expect(parsed.OTLP_LOGS?.headers).toEqual({ Authorization: 'Bearer secret-token', 'x-team': 'core' });
   });
 
-  it('rejects a plain http Better Stack endpoint', () => {
+  it('leaves log export off without an endpoint, so local runs never ship logs', () => {
+    expect(parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_HEADERS: 'Authorization=Bearer%20x' }).OTLP_LOGS).toBeUndefined();
+  });
+
+  it('rejects malformed OTLP settings at startup, so a typo does not silently drop logs', () => {
+    expect(() => parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_ENDPOINT: 'collector:4318' })).toThrow(
+      'OTEL_EXPORTER_OTLP_ENDPOINT must use http or https',
+    );
     expect(() =>
       parseEnv({
         ...validEnv,
-        BETTER_STACK_SOURCE_TOKEN: 'source-token',
-        BETTER_STACK_INGESTING_HOST: 'http://s123.betterstackdata.com',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://c.example.com',
+        OTEL_EXPORTER_OTLP_HEADERS: 'token',
       }),
-    ).toThrow('must use https');
+    ).toThrow('OTLP headers must be comma-separated key=value pairs');
   });
 
   it('logs emails locally outside production by default', () => {
     expect(parseEnv(validEnv).EMAIL_TRANSPORT).toBe('console');
   });
 
-  it('requires Resend credentials in production unless another transport is chosen', () => {
+  it('requires SMTP settings in production unless console is chosen, so verification emails are not silently dropped', () => {
     const production = {
       ...validEnv,
       NODE_ENV: 'production',
@@ -75,10 +94,27 @@ describe('parseEnv', () => {
       BETTER_AUTH_URL: 'https://app.example.com',
     };
 
-    expect(() => parseEnv(production)).toThrow('RESEND_API_KEY and EMAIL_FROM are required');
+    expect(() => parseEnv(production)).toThrow('SMTP_URL and EMAIL_FROM are required');
     expect(
-      parseEnv({ ...production, RESEND_API_KEY: 're_key', EMAIL_FROM: 'App <no-reply@example.com>' }).EMAIL_TRANSPORT,
-    ).toBe('resend');
+      parseEnv({ ...production, SMTP_URL: 'smtps://user:pass@smtp.example.com:465', EMAIL_FROM: 'App <a@example.com>' })
+        .EMAIL_TRANSPORT,
+    ).toBe('smtp');
     expect(parseEnv({ ...production, EMAIL_TRANSPORT: 'console' }).EMAIL_TRANSPORT).toBe('console');
+  });
+
+  it('rejects a non-SMTP URL, so an HTTP API key pasted by mistake fails at startup', () => {
+    expect(() => parseEnv({ ...validEnv, SMTP_URL: 'https://api.example.com' })).toThrow(
+      'SMTP_URL must use smtp:// or smtps://',
+    );
+    expect(parseEnv({ ...validEnv, SMTP_URL: 'smtp://user:pass@localhost:1025' }).SMTP_URL).toBe(
+      'smtp://user:pass@localhost:1025',
+    );
+  });
+
+  it('treats empty values as unset, so blank fields in a hosting dashboard do not fail startup', () => {
+    const parsed = parseEnv({ ...validEnv, OTEL_EXPORTER_OTLP_ENDPOINT: '', SMTP_URL: '', EMAIL_FROM: '' });
+
+    expect(parsed.OTLP_LOGS).toBeUndefined();
+    expect(parsed.SMTP_URL).toBeUndefined();
   });
 });

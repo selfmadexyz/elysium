@@ -1,5 +1,6 @@
 import { env } from '@backend/env';
 import { logger } from '@backend/lib/logger';
+import { createTransport } from 'nodemailer';
 
 export type Email = {
   to: string;
@@ -11,20 +12,13 @@ export type Email = {
 
 export type EmailTransport = (email: Email) => Promise<void>;
 
-const resendEndpoint = 'https://api.resend.com/emails';
-
-export function resendTransport(apiKey: string, from: string, endpoint = resendEndpoint): EmailTransport {
+export function smtpTransport(url: string, from: string): EmailTransport {
+  const mailer = createTransport(
+    { url, connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 20_000 },
+    { from },
+  );
   return async ({ to, subject, text, html }) => {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [to], subject, text, html }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      throw new Error(`Resend responded with ${response.status}: ${detail.slice(0, 500)}`);
-    }
+    await mailer.sendMail({ to, subject, text, html });
   };
 }
 
@@ -37,8 +31,8 @@ export const consoleTransport: EmailTransport = async ({ to, subject, text, temp
 };
 
 const transport: EmailTransport =
-  env.EMAIL_TRANSPORT === 'resend' && env.RESEND_API_KEY && env.EMAIL_FROM
-    ? resendTransport(env.RESEND_API_KEY, env.EMAIL_FROM)
+  env.EMAIL_TRANSPORT === 'smtp' && env.SMTP_URL && env.EMAIL_FROM
+    ? smtpTransport(env.SMTP_URL, env.EMAIL_FROM)
     : consoleTransport;
 
 export function deliverInBackground(email: Email, send: EmailTransport = transport) {

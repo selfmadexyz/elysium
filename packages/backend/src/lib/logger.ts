@@ -88,15 +88,13 @@ export function createLogger({ level, format, serviceName, environment, processo
 
 export type AppLogger = ReturnType<typeof createLogger>;
 
-export function betterStackProcessor(url: string, sourceToken: string) {
-  return new BatchLogRecordProcessor({
-    exporter: new OTLPLogExporter({ url, headers: { Authorization: `Bearer ${sourceToken}` } }),
-  });
+export function otlpLogProcessor(otlp: NonNullable<Env['OTLP_LOGS']>) {
+  return new BatchLogRecordProcessor({ exporter: new OTLPLogExporter(otlp) });
 }
 
-function betterStackProcessors(): LogRecordProcessor[] {
-  if (!env.BETTER_STACK_LOGS_URL || !env.BETTER_STACK_SOURCE_TOKEN || env.NODE_ENV === 'test') return [];
-  return [betterStackProcessor(env.BETTER_STACK_LOGS_URL, env.BETTER_STACK_SOURCE_TOKEN)];
+function otlpLogProcessors(): LogRecordProcessor[] {
+  if (!env.OTLP_LOGS || env.NODE_ENV === 'test') return [];
+  return [otlpLogProcessor(env.OTLP_LOGS)];
 }
 
 export const logger = createLogger({
@@ -104,7 +102,7 @@ export const logger = createLogger({
   format: env.NODE_ENV === 'production' ? 'json' : 'pretty',
   serviceName: env.OTEL_SERVICE_NAME,
   environment: env.NODE_ENV,
-  processors: betterStackProcessors(),
+  processors: otlpLogProcessors(),
 });
 
 process.on('uncaughtExceptionMonitor', (error, origin) => {

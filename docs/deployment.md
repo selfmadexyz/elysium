@@ -29,13 +29,13 @@ APP_URL=https://app.example.com
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 EMAIL_FROM=App <no-reply@app.example.com>
-RESEND_API_KEY=...
-# Optional: export logs and errors to Better Stack
-BETTER_STACK_SOURCE_TOKEN=...
-BETTER_STACK_INGESTING_HOST=...
+SMTP_URL=smtps://user:password@smtp.example.com:465
+# Optional: export logs and errors to any OTLP/HTTP backend or collector
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.example.com
+OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20...
 ```
 
-`EMAIL_FROM` must use a domain verified in Resend. Set `EMAIL_TRANSPORT=console` only for disposable smoke environments that must not send mail.
+`EMAIL_FROM` must use a domain verified with your SMTP provider. Set `EMAIL_TRANSPORT=console` only for disposable smoke environments that must not send mail.
 
 The web image sets `HOST=0.0.0.0`, `PORT=3000` and `NODE_ENV=production`. Backend secrets must never enter `VITE_*` variables, build arguments or browser imports. Register the exact Google callback `https://app.example.com/api/auth/callback/google`; automated email/password fixtures do not verify real OAuth.
 
@@ -80,6 +80,8 @@ For a managed production database, run the same release image with a reviewed en
 ```bash
 docker run --rm --env-file /secure/path/production.env elysium-migrate:<release>
 ```
+
+The web runtime image also carries the migrations: `bun /app/migrate/migrate.mjs` applies them with Drizzle's migrator, which shares the `drizzle.__drizzle_migrations` journal with `bun run db:migrate`. Use it as the release or pre-deploy command on platforms that run one in the new image before switching traffic, so no separate migration image is needed. It needs only `DATABASE_URL` and exits non-zero on failure, which should stop the rollout.
 
 ## Rate limits and migration 0003
 
