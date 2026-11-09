@@ -4,6 +4,8 @@ Record confirmed work outside the current change with context and a concrete nex
 
 ## Now
 
+- **Move the agent harness to the shipkit plugin** — the repo keeps its own copies of the ship / watch-pr / design-critic skills in `.agents/skills/` (linked from `.claude/skills/`), which now drift from the shipkit plugin that holds the maintained versions plus start and learn. Next: run `/shipkit:init` in update mode and remove the local copies. [in progress: claude/zealous-volta-njcujn]
+
 ## Next
 
 ## Later
