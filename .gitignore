@@ -40,3 +40,4 @@ CLAUDE.local.md
 test-results/
 playwright-report/
 e2e/*.local.spec.ts
+.plans/

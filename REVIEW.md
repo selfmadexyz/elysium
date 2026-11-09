@@ -29,7 +29,7 @@ High: review deeply, and a human reads the diff before merging.
 - What a deployed client reads: `packages/contracts/**`, `packages/backend/src/modules/*/model.ts`, `packages/backend/src/lib/models.ts`, `packages/backend/src/lib/errors.ts`.
 - Migrations and data: `packages/backend/src/database/**`, `packages/backend/src/lib/db.ts`, `packages/backend/drizzle/**`, `packages/backend/drizzle.config.ts`.
 - Runtime env, caching and secrets: `packages/backend/src/env.ts`, `packages/backend/.env.example`, `packages/web/vite.config.ts`, `compose.yaml`.
-- CI, hooks, supply chain and deploy: `.github/workflows/**`, `.github/dependabot.yml`, `.githooks/**`, `scripts/**`, `packages/web/Dockerfile`, `.dockerignore`, `.bun-version`, every `package.json` and `bun.lock` resolution change.
+- CI, hooks, supply chain and deploy: `.github/workflows/**`, `.github/dependabot.yml`, `.githooks/**`, `scripts/**`, `.claude/settings.json` (which plugins agents load here), the "Tooling and CI" section of `AGENTS.md` (the commands agents run), `packages/web/Dockerfile`, `.dockerignore`, `.bun-version`, every `package.json` and `bun.lock` resolution change.
 
 Low: everything else.
 
