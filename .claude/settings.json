@@ -2,5 +2,13 @@
   "includeCoAuthoredBy": false,
   "permissions": {
     "deny": ["Read(**/.env)", "Read(**/.env.local)", "Read(**/.env.*.local)"]
+  },
+  "extraKnownMarketplaces": {
+    "shipkit": {
+      "source": { "source": "github", "repo": "selfmadexyz/shipkit" }
+    }
+  },
+  "enabledPlugins": {
+    "shipkit@shipkit": true
   }
 }

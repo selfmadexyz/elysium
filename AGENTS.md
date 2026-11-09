@@ -83,25 +83,33 @@ Path-scoped rules live in [.github/instructions/react.instructions.md](.github/i
 
 ## Tooling and CI
 
-- After cloning, `bun run hooks` once installs the pre-push hook (`.githooks/`: lint, comment check, typecheck).
+The shipkit skills read their commands from this section; keep every line accurate.
+
+- After cloning, `bun run hooks` once installs the pre-push hook (`.githooks/`: lint, typecheck, harness tests, comment check).
+- Default branch: `main`.
 - Install: `bun install --frozen-lockfile` (Bun version pinned in `.bun-version`).
-- `bun run lint` (Biome), `bun run typecheck` (harness, contracts, backend, web), `bun run lint:comments`.
-- `bun run test` (harness + every package); per package `bun run --cwd packages/backend test` (Bun) or `bun run --cwd packages/web test` (Vitest).
-- `bun run build`, then `bun run test:e2e` (Playwright on the built server, needs `bunx playwright install chromium` and a disposable PostgreSQL).
+- Lint: `bun run lint` (Biome). Typecheck: `bun run typecheck` (harness, contracts, backend, web). Added comments: `bun run lint:comments`.
+- Build: `bun run build` (Vite build, then `tsc --noEmit` for the web package), needed when `packages/web/**`, `packages/backend/src/**`, `packages/contracts/**`, a `package.json` or `bun.lock` change. `packages/web/Dockerfile` is checked by the `images` CI job (`scripts/smoke-image.sh`), not by this build.
+- Tests: `bun run test` (harness + every package); per package `bun run --cwd packages/backend test` (Bun; database tests need `RUN_DATABASE_TESTS=1` and `DATABASE_URL` set in the shell to a migrated database named exactly `elysium_test`, otherwise `packages/backend/.env` supplies it), `bun run --cwd packages/web test` (Vitest), `bun run test:harness` for `scripts/`.
+- E2E: `e2e/` (Playwright, `chromium` project). Export `E2E_DATABASE_URL` (database `elysium_test` or `elysium_e2e`; `e2e/auth-posts.spec.ts` throws without it), run `DATABASE_URL="$E2E_DATABASE_URL" bun run --cwd packages/backend db:migrate`, `bun run build`, `bunx playwright install chromium`, then `bun run test:e2e`: `playwright.config.ts` starts the built Nitro server on port 3100 against that database. A signed-in user comes from `signIn()` in `e2e/auth-posts.spec.ts`: it signs up through the API, marks the email verified in the database, then signs in; the UI sign-up alone stops at email verification.
+- Locales: none.
 - CI (`.github/workflows/ci.yml`): `lint` (Biome, added comments on PRs, typecheck, harness tests), `audit` (`bun audit --prod --audit-level=high`), `test-backend` (fresh migrations + DB tests), `test-web` (Vitest + build), `test-e2e`; `images` runs only after all five. Never loosen a check or ignore an advisory to get green.
-- `src/routeTree.gen.ts` and `drizzle/meta/**` are generated: never edit them by hand.
+- Generated files: `packages/web/src/routeTree.gen.ts` and `packages/backend/drizzle/meta/**`; never edit them by hand.
 
 ## Workflow
 
 - One concern per PR: small diff, short human-readable body; unrelated fixes go in their own PR. Conventional titles and commits (`feat(web): …`, `fix(api): …`, `chore(ci): …`), in English.
 - Never push to a merged PR's branch: check `gh pr view` first, and move follow-ups to a new PR from the default branch.
 - Branches: `feat/…`, `fix/…`, `chore/…`, named after the change.
+- Every change starts from a ticket (a `BACKLOG.md` entry or a GitHub issue); with the shipkit plugin, through `/shipkit:start`: plan, design check when the change sets a pattern, one approval, code, then `/shipkit:ship`, `/shipkit:watch-pr` and `/shipkit:learn`.
 - Deferred or unrelated findings go in `BACKLOG.md` (Now / Next / Later / Ideas), not in the PR.
-- Skills: `/ship`, `/watch-pr`, `/design-critic` (canonical in `.agents/skills/`, linked from `.claude/skills/`). Review checklist and risk tiers: [REVIEW.md](REVIEW.md). CI and external setup: [docs/ai-harness.md](docs/ai-harness.md).
+- Skills (shipkit plugin, enabled in `.claude/settings.json`): `/shipkit:start`, `/shipkit:ship`, `/shipkit:watch-pr`, `/shipkit:learn`, `/shipkit:design-critic`. Without the plugin, follow Done means, [REVIEW.md](REVIEW.md) and the PR template by hand; neither CI nor the hooks depend on it.
+- A mistake caught twice becomes a test, a lint rule or one bullet here or in `.github/instructions/` (`/shipkit:learn`), never a comment.
+- Review checklist and risk tiers: [REVIEW.md](REVIEW.md). CI and external setup: [docs/ai-harness.md](docs/ai-harness.md).
 
 ## Done means
 
-Run what the change touches, and report failures as they are:
+Run what the change touches, and report failures as they are. A check counts as passing only when its command ran after the last edit and you read its output; an earlier run or "should pass" is not evidence.
 1. `bun run lint` and `bun run typecheck`. Read the typecheck output unfiltered: count errors, never `grep -v` it.
 2. The tests of what changed, then the package's whole test suite. A fix ships with a test that fails without it.
 3. Auth (sign-in/up, session cookies, the `_authenticated` redirect), posts CRUD and ownership, SSR/prerender or the `/api` dispatch touched: `bun run build` then `bun run test:e2e`.

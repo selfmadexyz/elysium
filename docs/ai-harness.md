@@ -12,20 +12,19 @@ Adapted from the local `railnet-app` process for Elysium's three-package Bun sta
 | `.github/instructions/*.instructions.md` | Path-scoped React/backend rules |
 | `.claude/rules/` | Relative links to those same scoped rules |
 | `REVIEW.md` | Important findings, high/low risk and convergent re-reviews |
-| `.agents/skills/{ship,watch-pr,design-critic}/SKILL.md` | Versioned shipping, review-follow-up and independent design workflows |
-| `.claude/skills/` | Relative links to the canonical skills |
-| `.claude/settings.json` | Denies Claude reads of `.env` files and disables its co-author trailer |
+| `.claude/settings.json` | Denies Claude reads of `.env` files, disables its co-author trailer, and registers and enables the shipkit plugin |
+| `.plans/` (ignored) | Plan files `/shipkit:start` writes per branch |
 | `CLAUDE.local.md` | Ignored personal preferences and local paths |
 | `BACKLOG.md` | Confirmed findings outside the active change |
 
-These files supply instructions. They do not install proprietary plugins, authenticate services or turn on automatic reviewers. `ship` uses an independent review when the host supports agents and reports gaps otherwise; optional external review plugins are not required dependencies.
+The workflow skills (`start`, `ship`, `watch-pr`, `learn`, `design-critic`) come from the shipkit Claude Code plugin (`selfmadexyz/shipkit`, a private marketplace), not from this repository; they read this repo's commands from `AGENTS.md` → "Tooling and CI". Claude Code offers the install to anyone who trusts the repo; without access to the private marketplace the offer fails and nothing else changes: the rules in `AGENTS.md`, `REVIEW.md` and the PR template still apply, and neither CI nor the hooks depend on the plugin. These files do not authenticate services or turn on automatic reviewers.
 
 ## Local workflow
 
 1. Install the Bun version in `.bun-version`, then `bun install --frozen-lockfile` and `bun run hooks` once per clone.
-2. Work on a scoped branch. Use `design-critic` when a new pattern warrants an independent alternative.
-3. Implement and run affected checks. `ship` prepares lint/typecheck/tests, review and a local UI demo when appropriate, then commits/pushes/opens a PR within the user's authorization.
-4. `watch-pr` pins the PR head and follows checks/reviews for at most three push rounds. It verifies bot findings, fixes bug classes, and records unrelated findings in `BACKLOG.md`.
+2. `/shipkit:start` takes a ticket from `BACKLOG.md` or a GitHub issue, has a fresh agent describe the affected code without knowing the ticket, writes the plan, runs `design-critic` when the change sets a pattern, asks for one approval, then implements.
+3. `/shipkit:ship` runs lint/typecheck/tests, reviews, the comment sweep and a local UI demo when a screen can change, then commits, pushes and opens the PR after one confirmation.
+4. `/shipkit:watch-pr` follows the PR's checks and reviews for at most three push rounds, verifies bot findings and fixes bug classes; `/shipkit:learn` then turns what they caught into a test, a lint rule or one rule line, or nothing.
 5. A human reviews high-risk diffs before merge. The PR template records Testing / Risk / How to revert.
 
 The pre-push hook runs the repo's local checks. It must be installed for each clone and can be bypassed by Git; it does not replace CI or GitHub branch rules. `lint:comments` rejects review annotations and lists additions requiring judgment; it cannot decide whether a comment is useful.
@@ -50,4 +49,4 @@ Dependabot updates Bun dependencies and GitHub Actions on the configured schedul
 
 There is no configured staging/production deployment target or digest-promotion release system in Elysium. Docker image publication is not evidence that an app has deployed. Define the hosting provider, environments, secrets, migration order, health checks and rollback strategy before adding release/deploy automation.
 
-The original project's onchain fork tests, widget/admin packages, localization pipeline, telemetry deployments, Render hooks, Slack/Linear notifications and personal worktree CLI are project-specific and are not prerequisites for this starter. The Elysium smoke suite does not replace those project-specific tests. No recording/demo infrastructure or MCP server is installed by this harness.
+The original project's onchain fork tests, widget/admin packages, localization pipeline, telemetry deployments, Render hooks, Slack/Linear notifications and personal worktree CLI are project-specific and are not prerequisites for this starter. The Elysium smoke suite does not replace those project-specific tests. No MCP server is installed by this harness; `/shipkit:ship` records UI demos with the repo's own Playwright setup, in a gitignored `e2e/*.local.spec.ts`.
