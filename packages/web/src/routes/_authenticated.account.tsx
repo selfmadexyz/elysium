@@ -49,7 +49,7 @@ function Account() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <h1 className="font-semibold text-2xl">Account</h1>
+      <h1 className="text-2xl font-semibold">Account</h1>
       <ProfileCard />
       {hasPassword && <PasswordCard />}
       <DeleteAccountCard />
@@ -205,7 +205,7 @@ function DeleteAccountCard() {
       <CardContent>
         {sent ? (
           <output className="block text-sm">
-            We sent a confirmation link to <span className="break-all font-medium">{session.user.email}</span>. Your
+            We sent a confirmation link to <span className="font-medium break-all">{session.user.email}</span>. Your
             account is deleted once you open it.
           </output>
         ) : (

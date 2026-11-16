@@ -6,16 +6,16 @@
     "packages/*"
   ],
   "overrides": {
-    "baseline-browser-mapping": "2.11.24",
-    "browserslist": "4.29.0",
+    "baseline-browser-mapping": "2.11.35",
+    "browserslist": "4.29.5",
     "defu": "6.1.7",
     "esbuild": "0.28.2",
-    "file-type": "22.1.0",
+    "file-type": "22.3.0",
     "nanoid": "5.1.16",
     "picomatch": "4.0.7",
-    "postcss": "8.5.28",
-    "vite": "8.3.3",
-    "seroval": "1.7.6",
+    "postcss": "8.5.32",
+    "vite": "8.3.6",
+    "seroval": "1.7.10",
     "source-map-js": "1.2.2"
   },
   "scripts": {
@@ -41,11 +41,11 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.1.2",
-    "@types/bun": "^1.4.2",
-    "typescript": "^5.9.3",
-    "@playwright/test": "1.60.0",
-    "pg": "^8.23.0",
+    "@biomejs/biome": "2.6.6",
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2",
+    "@playwright/test": "1.65.0",
+    "pg": "^8.23.1",
     "@types/pg": "^8.23.1"
   }
 }

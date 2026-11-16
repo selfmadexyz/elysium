@@ -34,8 +34,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ({ error, reset }) => (
     <RootDocument>
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-        <h1 className="font-semibold text-3xl">Something went wrong</h1>
-        <p className="max-w-lg text-muted-foreground">
+        <h1 className="text-3xl font-semibold">Something went wrong</h1>
+        <p className="text-muted-foreground max-w-lg">
           {import.meta.env.DEV && error instanceof Error ? error.message : 'An unexpected error occurred.'}
         </p>
         <button className="rounded-md border px-4 py-2" onClick={reset} type="button">
@@ -49,7 +49,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   ),
   notFoundComponent: () => (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="font-semibold text-3xl">Page not found</h1>
+      <h1 className="text-3xl font-semibold">Page not found</h1>
       <Link className="underline" to="/">
         Return home
       </Link>
@@ -73,7 +73,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body>
         <a
-          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-3"
+          className="focus:bg-background sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-3"
           href="#main-content"
         >
           Skip to content

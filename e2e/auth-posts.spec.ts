@@ -187,9 +187,14 @@ test('the account page updates the profile, changes the password and requests de
     await expect(page.getByText('Password changed.')).toBeVisible();
     const result = await db.query('SELECT email FROM "user" WHERE id = $1', [userId]);
     const email = result.rows[0].email as string;
-    expect((await page.request.post('/api/auth/sign-in/email', { data: { email, password: newPassword } })).ok()).toBe(
-      true,
-    );
+    expect(
+      (
+        await page.request.post('/api/auth/sign-in/email', {
+          data: { email, password: newPassword },
+          headers: { Origin: new URL(page.url()).origin },
+        })
+      ).ok(),
+    ).toBe(true);
 
     await page.setViewportSize({ width: 320, height: 844 });
     await page.screenshot({ path: test.info().outputPath('account-mobile.png'), fullPage: true });

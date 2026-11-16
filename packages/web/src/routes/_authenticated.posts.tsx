@@ -71,7 +71,7 @@ function Posts() {
     <div className="container mx-auto space-y-6 py-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-bold text-3xl tracking-tight">Posts</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Posts</h1>
           <p className="text-muted-foreground">Manage your posts here. Create, edit, or delete posts.</p>
         </div>
         <Button className="self-start sm:self-auto" onClick={handleCreate}>

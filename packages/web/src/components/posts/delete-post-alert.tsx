@@ -35,7 +35,7 @@ export function DeletePostAlert({ open, onOpenChange, post, onDeleted }: DeleteP
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the post
-            <strong className="mt-2 block text-foreground">&quot;{post.title}&quot;</strong>
+            <strong className="text-foreground mt-2 block">&quot;{post.title}&quot;</strong>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
